@@ -11,6 +11,6 @@ urlpatterns = [
     path('adminLogin/', views.adminLogin, name="login"),
     path('orderedItems/', views.orderedItems, name="orderedItems"),
     path('paymentAssessment/', views.paymentAss, name="paymentAss"),
-    path('salesMonitoring/', views.salesMonitor, name="salesMonitoring"),
+    path('salesMonitoring/', views.salesMonitor, name="salesMonitor"),
     path('inventory/', views.inventory, name="inventory"),
 ]

@@ -1,12 +1,19 @@
 :root{
-    --main-color: rgb(255, 255, 255);
+    --main-color: #fff;
     --text-color-main: rgb(0, 0, 0);
+    --navbar: #615c5c;
 }
 
 *{
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    color: var(--text-color-main);
+}
+
+.navbar{
+    background-color: var(--navbar);
+    color: var(--text-color-main);
 }
 
 .sdcLogo{
@@ -55,4 +62,13 @@ body{
 .item{
     width: 320px;
     height: 280px;
+}
+
+.aboutus-Model > div > img {
+    width: 250px;
+}
+
+/* ADMIN */
+.nav-item > a {
+    margin: 0 10px 0 10px;
 }

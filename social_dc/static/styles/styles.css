@@ -1,0 +1,58 @@
+:root{
+    --main-color: rgb(255, 255, 255);
+    --text-color-main: rgb(0, 0, 0);
+}
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.sdcLogo{
+    width: 75px !important;
+}
+
+body{
+    color: var(--text-color-main);
+    background-color: var(--main-color);
+}
+.container-homeContent{
+    display: flex;
+}
+.item-container{
+    margin: auto;
+    display: flex;
+    text-align: center;
+}
+.container-item-image{
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
+.bestSeller-title{
+    display: block;
+    width: 100%;
+    margin: 50px auto 50px auto;
+    text-align: center;
+}
+
+.info{
+    display: flex;
+}
+.companyInfo-Button{
+    display: block;
+    justify-items: center;
+}
+.socialMedia-Log{
+    display: flex;
+}
+
+.companyInfo-Section{
+    margin: auto;
+    
+}
+
+.item{
+    width: 320px;
+    height: 280px;
+}

@@ -3,7 +3,171 @@
 {% block title %} Products {% endblock %} 
 {% block content %}
 
-    <div>PRODUCT</div>
+    <div class="container p-5">
+        <h2 class="p-2 text-center fw-bold">PRODUCT</h2>
+    </div>
+    {% comment %} <div class="container">
+        <div class="row">
+            {% for product in products %}
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text">${{ product.price }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div> {% endcomment %}
+    <div class="container mb-5">
+        <div class="row justify-content-center mb-4">
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT 1.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/SDC COFFEE LOVER.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT 1.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/SDC COFFEE LOVER.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT 1.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/SDC COFFEE LOVER.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT 1.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/SDC COFFEE LOVER.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <img src="{% static 'images/HATERS TSHIRT.png' %}" class="card-img-top" alt="Haters">
+                    <div class="card-body">
+                        <h5 class="card-title">HATERS</h5>
+                        <p class="card-text">Price 350.00 php</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    
 {% endblock %}

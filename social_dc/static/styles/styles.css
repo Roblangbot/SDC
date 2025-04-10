@@ -1,14 +1,14 @@
 :root{
     --main-color: #fff;
     --text-color-main: rgb(0, 0, 0);
-    --navbar: #615c5c;
+    --navbar: #8d8383;
+    --accent-color: #0d6efd;
 }
 
 *{
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    color: var(--text-color-main);
 }
 
 .navbar{
@@ -21,7 +21,6 @@
 }
 
 body{
-    color: var(--text-color-main);
     background-color: var(--main-color);
 }
 .container-homeContent{
@@ -46,6 +45,10 @@ body{
 .info{
     display: flex;
 }
+footer{
+    background-color: var(--navbar);
+    color: var(--main-color) !important;
+}
 .companyInfo-Button{
     display: block;
     justify-items: center;
@@ -56,8 +59,49 @@ body{
 
 .companyInfo-Section{
     margin: auto;
-    
+    color: var(--main-color) !important;
 }
+
+.hover-white:hover {
+    color: white !important;
+}
+.hover-blue:hover {
+    color: var(--accent-color) !important;
+    -webkit-text-stroke: var(--text-color-main) .5px;
+}
+
+.logo > img{
+    width: 100px;
+}
+
+.marquee {
+    overflow: hidden;
+    white-space: nowrap;
+    box-sizing: border-box;
+    width: 100%;
+    background-color: black;
+  }
+  
+  .marquee h2 {
+    display: inline-block;
+    padding-left: 100%;
+    animation: marquee 20s linear infinite;
+  }
+  
+  @keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+  }
+  
+  .marquee-link {
+    color: var(--main-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+  }
+  
+  .marquee-link:hover {
+    color: white;
+  }  
 
 .item{
     width: 320px;

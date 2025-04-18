@@ -1,6 +1,9 @@
 :root{
-    --main-color: rgb(255, 255, 255);
+    --main-color: #fff;
     --text-color-main: rgb(0, 0, 0);
+    --navbar: #8d8383;
+    --accent-color: #0d6efd;
+    --orange: #c97405;
 }
 
 *{
@@ -9,12 +12,56 @@
     box-sizing: border-box;
 }
 
+.navbar{
+    background-color: var(--navbar);
+    color: var(--text-color-main);
+}
+
 .sdcLogo{
     width: 75px !important;
 }
 
+.video-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    z-index: -1;
+}
+
+.hero-section {
+    position: relative;
+    height: 100vh;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.5); /* Optional: semi-transparent overlay */
+}
+
+.btn-orange{
+    background-color: var(--orange);
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4); /* Overlay to increase text readability */
+    z-index: 1;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+}
+
 body{
-    color: var(--text-color-main);
     background-color: var(--main-color);
 }
 .container-homeContent{
@@ -39,6 +86,10 @@ body{
 .info{
     display: flex;
 }
+footer{
+    background-color: var(--navbar);
+    color: var(--main-color) !important;
+}
 .companyInfo-Button{
     display: block;
     justify-items: center;
@@ -49,10 +100,73 @@ body{
 
 .companyInfo-Section{
     margin: auto;
-    
+    color: var(--main-color) !important;
 }
+
+.hover-white:hover {
+    color: white !important;
+}
+.hover-blue:hover {
+    color: var(--accent-color) !important;
+    -webkit-text-stroke: var(--text-color-main) .5px;
+}
+
+.logo > img{
+    width: 100px;
+}
+
+.marquee {
+    overflow: hidden;
+    white-space: nowrap;
+    box-sizing: border-box;
+    width: 100%;
+    background-color: black;
+}
+  
+.marquee h2 {
+    display: inline-block;
+    padding-left: 100%;
+    animation: marquee 20s linear infinite;
+}
+
+@keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+
+.marquee-link {
+    color: var(--main-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.marquee-link:hover {
+    color: white;
+}  
 
 .item{
     width: 320px;
     height: 280px;
+}
+
+.aboutus-Model > div > img {
+    width: 250px;
+}
+
+/* ADMIN */
+.nav-item > a {
+    margin: 0 10px 0 10px;
+}
+
+.image-option img {
+    border: 5px solid transparent;
+    transition: border 0.2s ease;
+}
+
+.image-option img:hover {
+    border: 10px solid #6c757d;      
+}
+
+.image-option img.selected {
+    border: 10px solid #0d6efd;
 }

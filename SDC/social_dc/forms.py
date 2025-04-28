@@ -1,6 +1,6 @@
 # forms.py
 from django import forms
-from .models import ProductTable, BeigeTable, RedTable, BlueTable, GrayTable, BrownTable, YellowTable, WhiteTable, OrangeTable
+from .models import ProductTable, BeigeTable
 
 class ProductForm(forms.ModelForm):
     class Meta:
@@ -19,3 +19,14 @@ class ProductForm(forms.ModelForm):
             'brownid': forms.Select(attrs={'class': 'form-select d-none'}),  # hidden visually
             'grayid': forms.Select(attrs={'class': 'form-select d-none'}),  # hidden visually
         }
+
+class variantForm(forms.Form):
+    name = forms.CharField(max_length=999)  # Name of the variant
+    gray_image = forms.CharField(max_length=999, required=False)  # Image URL for gray variant
+    blue_image = forms.CharField(max_length=999, required=False)  # Image URL for blue variant
+    red_image = forms.CharField(max_length=999, required=False)   # Image URL for red variant
+    brown_image = forms.CharField(max_length=999, required=False) # Image URL for brown variant
+    white_image = forms.CharField(max_length=999, required=False) # Image URL for white variant
+    yellow_image = forms.CharField(max_length=999, required=False) # Image URL for yellow variant
+    orange_image = forms.CharField(max_length=999, required=False) # Image URL for orange variant
+    beige_image = forms.CharField(max_length=999, required=False) # Image URL for beige variant

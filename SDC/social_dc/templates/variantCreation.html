@@ -1,0 +1,29 @@
+{% extends 'adminBase.html' %}
+{% load static %}
+{% block title %} Variant Creation {% endblock %}
+{% block content %}
+
+<script>
+    function showAlert(message) {
+        alert(message);
+    }
+    </script>
+
+<div class="container text-center">
+    VARIANT CREATION
+</div>
+
+{% if success_message %}
+<script>
+    showAlert("{{ success_message }}");
+</script>
+{% endif %}
+
+<h1>Add a T-Shirt Model with Color URLs</h1>
+<form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save</button>
+</form>
+
+{% endblock %}

@@ -14,5 +14,7 @@ urlpatterns = [
     path('paymentAssessment/', views.paymentAss, name="paymentAss"),
     path('salesMonitoring/', views.salesMonitor, name="salesMonitor"),
     path('inventory/', views.inventory, name="inventory"),
-    path('itemCreation/', views.itemCreation, name="itemCreation"),
+    path('productCreation/', views.productCreation, name="productCreation"),
+    path('variantCreation/', views.variantCreation, name="variantCreation"),
+    path('analysis/', views.analysis, name="analysis"),
 ]

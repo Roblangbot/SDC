@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} {{ product.productname }} {% endblock %} 
+{% block content %}
+
+<div class="container py-5">
+    <!-- Product Name -->
+    <div class="row mb-4">
+        <div class="col text-center">
+            <h1 class="display-5 fw-bold">{{ product.productname }}</h1>
+        </div>
+    </div>
+
+    <!-- Product Info -->
+    <div class="row">
+        <!-- Default Image -->
+        
+        <form method="post" action="{% url 'add_to_cart' product.productid %}">
+            {% csrf_token %}
+            
+            <div class="container d-flex">
+                <div class="col-md-6 text-center">
+                    <div class="align-items-center d-flex">
+                        <img src="{{ product.productimage }}" alt="Default Product Image" class="img-fluid rounded shadow" width="900px">
+                    </div>
+                </div>
+                <div class="container">
+                    <div class="container-fluid">
+                        <h3 class="text-success mb-4">Price: PHP{{ price }}</h3>
+                    </div>
+    
+                    <!-- Size Selection -->
+                    <div class="container-fluid">
+                        <h4 class="mb-3 mt-4">Available Sizes</h4>
+                    </div>
+                    <div class="container-fluid">
+                        <div class="row g-3 mb-3">
+                            {% for size in size_variants %}
+                                <div class="col-6 col-sm-4">
+                                    <label class="btn btn-outline-primary w-100">
+                                        <input type="radio" name="size_id" value="{{ size.sizeid }}" required class="d-none">
+                                        {{ size.size }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <!-- Color Selection -->
+                        <h4 class="mb-3">Available Colors</h4>
+                        <div class="row g-3 mb-3">
+                            {% for color in color_variants %}
+                                <div class="col-6 col-sm-4">
+                                    <label class="btn btn-outline-secondary w-100">
+                                        <input type="radio" name="color" value="{{ color }}" required class="d-none">
+                                        <img src="{{ color.image_url }}" class="card-img-top" alt="{{ color.image_url }} Image">
+                                        <div class="card-body p-2 text-center">
+                                        </div>
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+        
+            <!-- Quantity -->
+            <div class="mb-3">
+                <label for="quantity" class="form-label">Quantity:</label>
+                <input type="number" name="quantity" id="quantity" min="1" value="1" class="form-control" required>
+            </div>
+        
+            <button type="submit" class="btn btn-success">Add to Cart</button>
+        </form>       
+    </div>
+</div>
+
+    <!-- You can conditionally include other variants the same way -->
+
+
+{% endblock %}

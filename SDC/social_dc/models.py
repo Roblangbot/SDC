@@ -89,7 +89,6 @@ class BeigeTable(models.Model):
     def __str__(self):
         return f"Beige Variant #{self.beigeid}"
 
-
 class BlueTable(models.Model):
     blueid = models.AutoField(db_column='blueID', primary_key=True)  # Field name made lowercase.
     name = models.CharField(max_length=999)
@@ -101,6 +100,7 @@ class BlueTable(models.Model):
 
     def __str__(self):
         return f"Blue Variant #{self.blueid}"
+
 
 class BrownTable(models.Model):
     brownid = models.AutoField(db_column='brownID', primary_key=True)  # Field name made lowercase.
@@ -122,11 +122,12 @@ class ColorTable(models.Model):
         managed = False
         db_table = 'color_table'
 
+    def __str__(self):
+        return f"Colors #{self.colorid}"
 
 class CustomerTable(models.Model):
     customerid = models.AutoField(db_column='CustomerID', primary_key=True)  # Field name made lowercase.
     name = models.CharField(db_column='Name', max_length=45)  # Field name made lowercase.
-    address = models.CharField(db_column='Address', max_length=45)  # Field name made lowercase.
     contactno_field = models.CharField(db_column='ContactNo.', max_length=45)  # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
 
     class Meta:
@@ -138,7 +139,7 @@ class CustomerTable(models.Model):
 
 class DeliveryTable(models.Model):
     deliveryid = models.AutoField(db_column='deliveryID', primary_key=True)  # Field name made lowercase.
-    salesid = models.ForeignKey('SalesTable', models.DO_NOTHING, db_column='salesID')  # Field name made lowercase.
+    salesid = models.IntegerField(db_column='salesID')  # Field name made lowercase.
     statusid = models.ForeignKey('StatusTable', models.DO_NOTHING, db_column='statusID')  # Field name made lowercase.
     date = models.DateField()
     time = models.IntegerField()
@@ -207,8 +208,19 @@ class GrayTable(models.Model):
     def __str__(self):
         return f"Gray Variant #{self.grayid}"
 
+class ItemStatusTable(models.Model):
+    itemstatusid = models.AutoField(db_column='itemStatusID', primary_key=True)  # Field name made lowercase.
+    itemstat = models.CharField(db_column='itemStat', max_length=99)  # Field name made lowercase.
+
+    class Meta:
+        managed = False
+        db_table = 'item status table'
+
+    def __str__(self):
+        return f"Item Status #{self.itemstatusid}"
+
 class MonthyreportTable(models.Model):
-    monthlyreportid = models.AutoField(db_column='monthlyreportID', primary_key=True)  # Field name made lowercase.
+    monthlyreportid = models.IntegerField(db_column='monthlyreportID', primary_key=True)  # Field name made lowercase.
     days = models.IntegerField()
     weeks = models.IntegerField()
     months = models.IntegerField()
@@ -233,7 +245,7 @@ class OrangeTable(models.Model):
 
 class OrderTable(models.Model):
     orderid = models.AutoField(db_column='orderID', primary_key=True)  # Field name made lowercase.
-    sizeid = models.ForeignKey('SizeTable', models.DO_NOTHING, db_column='sizeID')  # Field name made lowercase.
+    sizeid = models.CharField(db_column='sizeID', max_length=45)  # Field name made lowercase.
     productid = models.ForeignKey('ProductTable', models.DO_NOTHING, db_column='productID')  # Field name made lowercase.
     priceid = models.ForeignKey('PriceTable', models.DO_NOTHING, db_column='priceID')  # Field name made lowercase.
     salesid = models.ForeignKey('SalesTable', models.DO_NOTHING, db_column='salesID')  # Field name made lowercase.
@@ -247,15 +259,36 @@ class OrderTable(models.Model):
     def __str__(self):
         return f"Order ID #{self.orderid}"
 
+class PaymentTable(models.Model):
+    paymentid = models.AutoField(db_column='paymentID', primary_key=True)  # Field name made lowercase.
+    paystatid = models.ForeignKey('PaystatTable', models.DO_NOTHING, db_column='paystatID')  # Field name made lowercase.
+    mop = models.CharField(db_column='MOP', max_length=99)  # Field name made lowercase.
+    date = models.DateField(db_column='Date')  # Field name made lowercase.
+    time = models.TimeField(db_column='Time')  # Field name made lowercase.
+
+    class Meta:
+        managed = False
+        db_table = 'payment_table'
+
+    def __str__(self):
+        return f"Payment ID#{self.paymentid}"
+
+class PaystatTable(models.Model):
+    paystatid = models.AutoField(db_column='paystatID', primary_key=True)  # Field name made lowercase.
+    status = models.CharField(max_length=99)
+
+    class Meta:
+        managed = False
+        db_table = 'paystat_table'
+
 class PriceTable(models.Model):
-    priceid = models.AutoField(db_column='priceID', primary_key=True)  # Field name made lowercase.
+    priceid = models.IntegerField(db_column='priceID', primary_key=True)  # Field name made lowercase.
     name = models.CharField(max_length=45)
     amount = models.IntegerField()
 
     class Meta:
         managed = False
         db_table = 'price_table'
-
 
 class ProductTable(models.Model):
     productid = models.AutoField(db_column='productID', primary_key=True)  # Field name made lowercase.
@@ -273,9 +306,9 @@ class ProductTable(models.Model):
     class Meta:
         managed = False
         db_table = 'product_table'
-
+    
     def __str__(self):
-        return f"Product ID #{self.productid}"
+        return f"Product ID#{self.productid}"
 
 
 class RedTable(models.Model):
@@ -288,7 +321,7 @@ class RedTable(models.Model):
         db_table = 'red_table'
 
     def __str__(self):
-        return f"Red Variant #{self.redid}"
+        return f"Red Variant#{self.redid}"
 
 class Register(models.Model):
     employee_id = models.AutoField(primary_key=True)
@@ -301,13 +334,13 @@ class Register(models.Model):
         managed = False
         db_table = 'register'
 
-    def __str__(self):
-        return f"Employee ID #{self.employee_id}"
 
 class SalesTable(models.Model):
-    salesid = models.AutoField(db_column='salesID', primary_key=True)  # Field name made lowercase.
+    salesid = models.IntegerField(db_column='salesID', primary_key=True)  # Field name made lowercase.
     customerid = models.ForeignKey(CustomerTable, models.DO_NOTHING, db_column='customerID')  # Field name made lowercase.
     total_price = models.IntegerField()
+    itemstatusid = models.ForeignKey(ItemStatusTable, models.DO_NOTHING, db_column='itemStatusID')  # Field name made lowercase.
+    paymentid = models.ForeignKey(PaymentTable, models.DO_NOTHING, db_column='PaymentID')  # Field name made lowercase.
     sales_date = models.DateField(blank=True, null=True)
     sales_time = models.TimeField(blank=True, null=True)
 
@@ -316,7 +349,7 @@ class SalesTable(models.Model):
         db_table = 'sales_table'
 
     def __str__(self):
-        return f"Sales #{self.salesid}"
+        return f"Sales ID #{self.salesid}"
 
 class SizeTable(models.Model):
     sizeid = models.AutoField(db_column='sizeID', primary_key=True)  # Field name made lowercase.
@@ -325,10 +358,14 @@ class SizeTable(models.Model):
     class Meta:
         managed = False
         db_table = 'size_table'
+        
+    def __str__(self):
+        return f"Size ID #{self.sizeid}"
+
 
 
 class StatusTable(models.Model):
-    statusid = models.AutoField(db_column='statusID', primary_key=True)  # Field name made lowercase.
+    statusid = models.IntegerField(db_column='statusID', primary_key=True)  # Field name made lowercase.
     status = models.CharField(max_length=45)
 
     class Meta:

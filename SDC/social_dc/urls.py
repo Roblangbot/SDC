@@ -7,7 +7,7 @@ urlpatterns = [
     path('product/', views.product, name="product"),
     path('contacts/', views.contacts, name="contacts"),
     path('cart/', views.cart, name="cart"),
-    path('itemPage/', views.itemPage, name="itemPage"),
+    path('productPage/<int:productID>', views.productPage, name="productPage"),
     path('adminRegistration/', views.adminRegistration, name="register"),
     path('adminLogin/', views.adminLogin, name="login"),
     path('orderedItems/', views.orderedItems, name="orderedItems"),
@@ -17,4 +17,6 @@ urlpatterns = [
     path('productCreation/', views.productCreation, name="productCreation"),
     path('variantCreation/', views.variantCreation, name="variantCreation"),
     path('analysis/', views.analysis, name="analysis"),
+    path('add-to-cart/<int:productID>/', views.add_to_cart, name='add_to_cart'),
+
 ]

@@ -17,6 +17,13 @@
     color: var(--text-color-main);
 }
 
+.title{
+    background-color: var(--navbar);
+    color: var(--text-color-main);
+    border-radius: 20px;
+    font-weight: 900;
+}
+
 .sdcLogo{
     width: 75px !important;
 }
@@ -165,6 +172,10 @@ footer{
 
 .image-option img:hover {
     border: 10px solid #6c757d;      
+}
+
+.abouttext{
+    margin: 0 50px 0 50px;
 }
 
 .image-option img.selected {

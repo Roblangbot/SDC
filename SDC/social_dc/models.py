@@ -250,7 +250,7 @@ class OrangeTable(models.Model):
 
 class OrderTable(models.Model):
     orderid = models.AutoField(db_column='orderID', primary_key=True)  # Field name made lowercase.
-    sizeid = models.CharField(db_column='sizeID', max_length=45)  # Field name made lowercase.
+    sizeid = models.ForeignKey('SizeTable', models.DO_NOTHING, db_column='sizeID')
     productid = models.ForeignKey('ProductTable', models.DO_NOTHING, db_column='productID')  # Field name made lowercase.
     priceid = models.ForeignKey('PriceTable', models.DO_NOTHING, db_column='priceID')  # Field name made lowercase.
     salesid = models.ForeignKey('SalesTable', models.DO_NOTHING, db_column='salesID')  # Field name made lowercase.
@@ -262,7 +262,7 @@ class OrderTable(models.Model):
         db_table = 'order_table'
 
     def __str__(self):
-        return f"Order ID #{self.orderid}"
+        return f"{self.orderid}"
 
 class PaymentTable(models.Model):
     paymentid = models.AutoField(db_column='paymentID', primary_key=True)  # Field name made lowercase.
@@ -328,17 +328,6 @@ class RedTable(models.Model):
 
     def __str__(self):
         return f"Red Variant#{self.redid}"
-
-class Register(models.Model):
-    employee_id = models.AutoField(primary_key=True)
-    fname = models.CharField(max_length=99)
-    lname = models.CharField(max_length=99)
-    username = models.CharField(max_length=99)
-    password = models.CharField(max_length=99)
-
-    class Meta:
-        managed = False
-        db_table = 'register'
 
 
 class SalesTable(models.Model):

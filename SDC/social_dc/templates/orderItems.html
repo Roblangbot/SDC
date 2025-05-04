@@ -3,6 +3,35 @@
 {% block title %} Your Cart {% endblock %} 
 {% block content %}
 
-    <div>ORDERED ITEMS</div>
+<div class="container py-5">
+    <h2 class="mb-4">Ordered Items</h2>
+    
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Order ID</th>
+                <th>Product ID</th>
+                <th>Size ID</th>
+                <th>Color ID</th>
+                <th>Sales ID</th>
+                <th>Price ID</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td>{{ order.orderid }}</td>
+                <td>{{ order.productid.productname }}</td>
+                <td>{{ order.sizeid.size }}</td>
+                <td>{{ order.colorid.colorName }}</td>
+                <td>{{ order.salesid_id }}</td>
+                <td>{{ order.priceid.amount }}</td>
+                <td>{{ order.quantity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>    
+</div>
 
 {% endblock %}

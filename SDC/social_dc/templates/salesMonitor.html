@@ -1,8 +1,113 @@
 {% extends 'adminBase.html' %}
 {% load static %}
-{% block title %} Your Cart {% endblock %} 
+{% block title %} Sales Monitoring {% endblock %}
 {% block content %}
 
-    <div>Sales Monitoring</div>
+<div class="container py-5">
+    {% if sales_trend %}
+    <div class="alert alert-info mt-4">
+        AI Insight: {{ sales_trend }}
+    </div>
+    {% endif %}
+
+    {% if outlier_periods %}
+    <div class="alert alert-warning mt-4">
+        Unusual sales activity detected in: {{ outlier_periods|join:", " }}
+    </div>
+    {% endif %}
+    
+    <!-- Timeframe Switcher (Daily/Monthly) -->
+    <form method="get" class="mb-4">
+        <button type="submit" name="timeframe" value="month" class="btn btn-primary">Monthly Sales</button>
+        <button type="submit" name="timeframe" value="day" class="btn btn-secondary">Daily Sales</button>
+    </form>
+
+    <!-- Most Bought Color -->
+    <div class="container w-70">
+        <h2 class="mb-4">Most Bought Color</h2>
+        <canvas id="colorChart"></canvas>
+    </div>
+
+    <!-- Most Bought Design -->
+    <div class="container w-70">
+        <h2 class="mt-5">Most Bought Design</h2>
+        <canvas id="designChart"></canvas>
+    </div>
+
+    <!-- Most Bought Size -->
+    <div class="container w-70">
+        <h2 class="mt-5">Most Bought Size</h2>
+        <canvas id="sizeChart"></canvas>
+    </div>
+
+    <!-- Most Bought Product and Color Combo -->
+    <div class="container w-70">
+        <h2 class="mt-5">Most Bought Shirt and Color</h2>
+        <canvas id="comboChart"></canvas>
+    </div>
+
+    <!-- Total Sales -->
+    <div class="container w-70">
+        <h2 class="mt-5">Total Sales</h2>
+        <canvas id="salesChart"></canvas>
+    </div>
+    
+</div>
+
+
+<script>
+    // Function to render a bar chart
+    const renderBar = (id, labels, data, label) => {
+        new Chart(document.getElementById(id), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: data,
+                    backgroundColor: ['#36a2eb', '#ff6384', '#ffcd56', '#4bc0c0', '#9966ff']
+                }]
+            }
+        });
+    };
+
+    // Function to render a pie chart
+    const renderPie = (id, labels, data) => {
+        new Chart(document.getElementById(id), {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: ['#36a2eb', '#ff6384', '#ffcd56', '#4bc0c0', '#9966ff']
+                }]
+            }
+        });
+    };
+
+    // Function to render a line chart
+    const renderLine = (id, labels, data) => {
+        new Chart(document.getElementById(id), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Sales',
+                    data: data,
+                    fill: false,
+                    borderColor: 'teal',
+                    tension: 0.1
+                }]
+            }
+        });
+    };
+
+    // Render all charts
+    renderBar('colorChart', {{ color_labels|safe }}, {{ color_totals|safe }}, 'Colors');
+    renderPie('designChart', {{ design_labels|safe }}, {{ design_totals|safe }});
+    renderPie('sizeChart', {{ size_labels|safe }}, {{ size_totals|safe }});
+    renderBar('comboChart', {{ combo_labels|safe }}, {{ combo_totals|safe }}, 'Product/Color');
+    renderLine('salesChart', {{ sales_labels|safe }}, {{ sales_totals|safe }});
+</script>
 
 {% endblock %}

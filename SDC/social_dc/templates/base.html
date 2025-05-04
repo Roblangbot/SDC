@@ -20,18 +20,23 @@
           </button>
           <div class="collapse navbar-collapse" id="navbarNavDropdown">
               <ul class="navbar-nav ms-auto">
-              <li class="nav-item">
-                  <a class="nav-link" aria-current="page" href="{% url "aboutus" %}">About Us</a>
-              </li>
-              <li class="nav-item">
-                  <a class="nav-link" href="{% url "product" %}">Product</a>
-              </li>
-              <li class="nav-item">
-                  <a class="nav-link" href="{% url "contacts" %}">Contacts</a>
-              </li>
-              <li class="nav-item">
-                  <a class="nav-link" href="{% url "cart" %}">Cart</a>
-              </li>
+                <li class="nav-item">
+                    <a class="nav-link" aria-current="page" href="{% url "aboutus" %}">About Us</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url "product" %}">Product</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url "contacts" %}">Contacts</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url "faq" %}">FAQ</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="#" data-bs-toggle="offcanvas" data-bs-target="#cartSidebar" aria-controls="cartSidebar">
+                    Cart
+                  </a>
+                </li>
               </ul>
           </div>
         </div>
@@ -76,6 +81,38 @@
       </div>
     </footer>
 
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="cartSidebar" aria-labelledby="cartSidebarLabel">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="cartSidebarLabel">Your Cart</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body">
+        {% if cart_items %}
+            {% for item in cart_items %}
+                <div class="mb-3 border-bottom pb-2">
+                    <strong>{{ item.product_name }}</strong><br>  <!-- Corrected field names -->
+                    Size: {{ item.size }}<br>  <!-- Corrected field names -->
+                    Color: {{ item.color }}<br>  <!-- Corrected field names -->
+                    Quantity: {{ item.quantity }}<br>
+                    <span class="text-success">₱{{ item.price }}</span>
+                    
+                    <!-- Remove Button -->
+                    <form method="POST" action="{% url 'remove_from_cart' item.product_id item.size item.color %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm mt-2">Remove</button>
+                    </form>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>Your cart is empty.</p>
+        {% endif %}
+        <!-- Optionally, include a checkout button -->
+        {% comment %}
+        <a href="{% url 'checkout' %}" class="btn btn-primary w-100 mt-3">Checkout</a>
+        {% endcomment %}
+    </div>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>

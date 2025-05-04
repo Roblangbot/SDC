@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %} {{ product.productname }} {% endblock %} 
+{% block title %} {{ product.productname }} {% endblock %}
 {% block content %}
 
 <div class="container py-5">
@@ -14,7 +14,6 @@
     <!-- Product Info -->
     <div class="row">
         <!-- Default Image -->
-        
         <form method="post" action="{% url 'add_to_cart' product.productid %}">
             {% csrf_token %}
             
@@ -38,30 +37,28 @@
                             {% for size in size_variants %}
                                 <div class="col-6 col-sm-4">
                                     <label class="btn btn-outline-primary w-100">
-                                        <input type="radio" name="size_id" value="{{ size.sizeid }}" required class="d-none">
+                                        <input type="radio" name="sizeID" value="{{ size.sizeid }}" required class="d-none">
                                         {{ size.size }}
                                     </label>
                                 </div>
                             {% endfor %}
                         </div>
+
                         <!-- Color Selection -->
                         <h4 class="mb-3">Available Colors</h4>
                         <div class="row g-3 mb-3">
                             {% for color in color_variants %}
                                 <div class="col-6 col-sm-4">
                                     <label class="btn btn-outline-secondary w-100">
-                                        <input type="radio" name="color" value="{{ color }}" required class="d-none">
-                                        <img src="{{ color.image_url }}" class="card-img-top" alt="{{ color.image_url }} Image">
-                                        <div class="card-body p-2 text-center">
-                                        </div>
+                                        <input type="radio" name="colorID" value="{{ color.id }}" required class="d-none" {% if color.name == 'Black' %}checked{% endif %}>
+                                        <img src="{{ color.image_url }}" class="card-img-top" alt="{{ color.name }} Image">
                                     </label>
                                 </div>
                             {% endfor %}
-                        </div>
+                        </div>                        
                     </div>
                 </div>
             </div>
-        
         
             <!-- Quantity -->
             <div class="mb-3">
@@ -74,7 +71,36 @@
     </div>
 </div>
 
-    <!-- You can conditionally include other variants the same way -->
-
+<script>
+    // Add active class on page load to pre-selected radio
+    window.addEventListener('DOMContentLoaded', () => {
+        const selectedSize = document.querySelector('input[name="sizeID"]:checked');
+        const selectedColor = document.querySelector('input[name="colorID"]:checked');
+  
+        // Add active class to the selected size and color on page load
+        if (selectedSize) selectedSize.closest('label').classList.add('active');
+        if (selectedColor) selectedColor.closest('label').classList.add('active');
+    });
+  
+    // Size selection event handler
+    document.querySelectorAll('input[name="sizeID"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('input[name="sizeID"]').forEach(r => {
+                r.closest('label').classList.remove('active');  // Remove active from all sizes
+            });
+            this.closest('label').classList.add('active');  // Add active to the selected size
+        });
+    });
+  
+    // Color selection event handler
+    document.querySelectorAll('input[name="colorID"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('input[name="colorID"]').forEach(r => {
+                r.closest('label').classList.remove('active');  // Remove active from all colors
+            });
+            this.closest('label').classList.add('active');  // Add active to the selected color
+        });
+    });
+</script>
 
 {% endblock %}

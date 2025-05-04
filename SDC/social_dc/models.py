@@ -80,6 +80,7 @@ class AuthUserUserPermissions(models.Model):
 class BeigeTable(models.Model):
     beigeid = models.AutoField(db_column='beigeID', primary_key=True)  # Field name made lowercase.
     name = models.CharField(max_length=999)
+    colorid = models.ForeignKey('ColorTable', models.DO_NOTHING, db_column='colorID')  # Field name made lowercase.
     beigeimage = models.CharField(max_length=999)
 
     class Meta:
@@ -91,6 +92,7 @@ class BeigeTable(models.Model):
 
 class BlueTable(models.Model):
     blueid = models.AutoField(db_column='blueID', primary_key=True)  # Field name made lowercase.
+    colorid = models.ForeignKey('ColorTable', models.DO_NOTHING, db_column='colorID')  # Field name made lowercase.
     name = models.CharField(max_length=999)
     blueimage = models.CharField(max_length=999)
 
@@ -105,6 +107,7 @@ class BlueTable(models.Model):
 class BrownTable(models.Model):
     brownid = models.AutoField(db_column='brownID', primary_key=True)  # Field name made lowercase.
     name = models.CharField(max_length=999)
+    colorid = models.ForeignKey('ColorTable', models.DO_NOTHING, db_column='colorID')  # Field name made lowercase.
     brownimage = models.CharField(max_length=999)
 
     class Meta:
@@ -116,14 +119,14 @@ class BrownTable(models.Model):
 
 class ColorTable(models.Model):
     colorid = models.AutoField(db_column='colorID', primary_key=True)  # Field name made lowercase.
-    color = models.CharField(max_length=20)
+    colorName = models.CharField(max_length=20)
 
     class Meta:
         managed = False
         db_table = 'color_table'
 
     def __str__(self):
-        return f"Colors #{self.colorid}"
+        return f"{self.colorid}"
 
 class CustomerTable(models.Model):
     customerid = models.AutoField(db_column='CustomerID', primary_key=True)  # Field name made lowercase.
@@ -199,6 +202,7 @@ class DjangoSession(models.Model):
 class GrayTable(models.Model):
     grayid = models.AutoField(db_column='grayID', primary_key=True)  # Field name made lowercase.
     name = models.CharField(max_length=999)
+    colorid = models.ForeignKey(ColorTable, models.DO_NOTHING, db_column='colorID')  # Field name made lowercase.
     grayimage = models.CharField(max_length=999)
 
     class Meta:
@@ -233,6 +237,7 @@ class MonthyreportTable(models.Model):
 
 class OrangeTable(models.Model):
     orangeid = models.AutoField(db_column='orangeID', primary_key=True)  # Field name made lowercase.
+    colorid = models.ForeignKey(ColorTable, models.DO_NOTHING, db_column='colorID')  # Field name made lowercase.
     name = models.CharField(max_length=999)
     orangeimage = models.CharField(max_length=999)
 
@@ -313,6 +318,7 @@ class ProductTable(models.Model):
 
 class RedTable(models.Model):
     redid = models.AutoField(db_column='redID', primary_key=True)  # Field name made lowercase.
+    colorid = models.ForeignKey(ColorTable, models.DO_NOTHING, db_column='colorID')  # Field name made lowercase.
     redimage = models.CharField(max_length=999)
     name = models.CharField(max_length=999)
 
@@ -375,6 +381,7 @@ class StatusTable(models.Model):
 
 class WhiteTable(models.Model):
     whiteid = models.AutoField(db_column='whiteID', primary_key=True)  # Field name made lowercase.
+    colorid = models.ForeignKey(ColorTable, models.DO_NOTHING, db_column='colorID')  # Field name made lowercase.
     name = models.CharField(max_length=999)
     whiteimage = models.CharField(max_length=999)
 
@@ -387,6 +394,7 @@ class WhiteTable(models.Model):
 
 class YellowTable(models.Model):
     yellowid = models.AutoField(db_column='yellowID', primary_key=True)  # Field name made lowercase.
+    colorid = models.ForeignKey(ColorTable, models.DO_NOTHING, db_column='colorID')  # Field name made lowercase.
     name = models.CharField(max_length=999)
     yellowimage = models.CharField(max_length=999)
 

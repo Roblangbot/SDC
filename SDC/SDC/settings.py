@@ -63,6 +63,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'social_dc.context_processors.cart_items_processor',
             ],
         },
     },
@@ -126,3 +127,9 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Session settings
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
+# Optional: session cookie duration in seconds
+SESSION_COOKIE_AGE = 3600  # 1 hour, default is 300 seconds (5 minutes)

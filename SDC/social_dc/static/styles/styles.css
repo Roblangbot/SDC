@@ -170,3 +170,8 @@ footer{
 .image-option img.selected {
     border: 10px solid #0d6efd;
 }
+
+abel.active {
+    border: 2px solid #198754; /* Bootstrap success color */
+    background-color: #e9f8ef;
+  }

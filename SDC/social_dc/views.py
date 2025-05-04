@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .models import (ProductTable, BeigeTable, RedTable, BlueTable, GrayTable, BrownTable, YellowTable, WhiteTable, OrangeTable, PriceTable, SizeTable, ColorTable, OrderTable, SalesTable)
 from .forms import ProductForm, variantForm
 from django.utils import timezone
+from django.http import HttpResponseBadRequest, HttpResponseNotFound
 
 # Create your views here.
 
@@ -14,6 +15,9 @@ def adminLogin(request):
 
 def home(request):
     return render(request, 'index.html')
+
+def faq(request):
+    return render(request, 'faq.html')
 
 def aboutus(request):
     return render(request, 'about.html')
@@ -75,24 +79,67 @@ def productPage(request, productID):
     price = amount.amount if amount else 0
     size_variants = SizeTable.objects.all()
 
-    # Collect only existing color variants
+    # Initialize the list of color variants
     color_variants = []
+
+    # Adding the 'Black' color variant
+    black_color = ColorTable.objects.filter(colorName__iexact="Black").first()
+    if black_color:
+        color_variants.append({
+            'name': 'Black',
+            'image_url': product.productimage,
+            'id': black_color.colorid  # Color ID for Black from ColorTable
+        })
+
+    # Add other colors (Blue, Beige, Red, etc.) based on their IDs and images
     if product.blueid:
-        color_variants.append({'name': 'Blue', 'image_url': product.blueid.blueimage}) 
+        color_variants.append({
+            'name': 'Blue',
+            'image_url': product.blueid.blueimage,
+            'id': product.blueid.colorid  # Ensure that blueid has colorid field
+        })
     if product.beigeid:
-        color_variants.append({'name': 'Beige', 'image_url': product.beigeid.beigeimage})
+        color_variants.append({
+            'name': 'Beige',
+            'image_url': product.beigeid.beigeimage,
+            'id': product.beigeid.colorid  # Ensure that beigeid has colorid field
+        })
     if product.redid:
-        color_variants.append({'name': 'Red', 'image_url': product.redid.redimage})
+        color_variants.append({
+            'name': 'Red',
+            'image_url': product.redid.redimage,
+            'id': product.redid.colorid  # Ensure that redid has colorid field
+        })
     if product.grayid:
-        color_variants.append({'name': 'Gray', 'image_url': product.grayid.grayimage})
+        color_variants.append({
+            'name': 'Gray',
+            'image_url': product.grayid.grayimage,
+            'id': product.grayid.colorid  # Ensure that grayid has colorid field
+        })
     if product.whiteid:
-        color_variants.append({'name': 'White', 'image_url': product.whiteid.whiteimage})
+        color_variants.append({
+            'name': 'White',
+            'image_url': product.whiteid.whiteimage,
+            'id': product.whiteid.colorid  # Ensure that whiteid has colorid field
+        })
     if product.brownid:
-        color_variants.append({'name': 'Brown', 'image_url': product.brownid.brownimage})
+        color_variants.append({
+            'name': 'Brown',
+            'image_url': product.brownid.brownimage,
+            'id': product.brownid.colorid  # Ensure that brownid has colorid field
+        })
     if product.orangeid:
-        color_variants.append({'name': 'Orange', 'image_url': product.orangeid.orangeimage})
+        color_variants.append({
+            'name': 'Orange',
+            'image_url': product.orangeid.orangeimage,
+            'id': product.orangeid.colorid  # Ensure that orangeid has colorid field
+        })
     if product.yellowid:
-        color_variants.append({'name': 'Yellow', 'image_url': product.yellowid.yellowimage})
+        color_variants.append({
+            'name': 'Yellow',
+            'image_url': product.yellowid.yellowimage,
+            'id': product.yellowid.colorid  # Ensure that yellowid has colorid field
+        })
 
     return render(request, 'productPage.html', {
         'product': product,
@@ -103,55 +150,98 @@ def productPage(request, productID):
 
 def add_to_cart(request, productID):
     if request.method == 'POST':
-        size_id = request.POST.get('size_id')
-        color_name = request.POST.get('color')  # Get the selected color name
-        quantity = int(request.POST.get('quantity', 1))
+        # Get the size, color, and quantity from the form data
+        size_id = request.POST.get('sizeID')
+        color_id = request.POST.get('colorID')
+        quantity = request.POST.get('quantity')
 
-        # Fetch product and size
-        product = get_object_or_404(ProductTable, productid=productID)
-        size = get_object_or_404(SizeTable, sizeid=size_id)
+        # Ensure all required data is provided
+        if not size_id or not color_id or not quantity:
+            return HttpResponseBadRequest("Missing required data.")
 
-        # Fetch the correct color variant table based on the color selected
-        if color_name == 'Beige':
-            color_variant = get_object_or_404(BeigeTable)
-        elif color_name == 'Blue':
-            color_variant = get_object_or_404(BlueTable)
-        elif color_name == 'Brown':
-            color_variant = get_object_or_404(BrownTable)
-        elif color_name == 'Gray':
-            color_variant = get_object_or_404(GrayTable)
-        elif color_name == 'Orange':
-            color_variant = get_object_or_404(OrangeTable)
-        elif color_name == 'Red':
-            color_variant = get_object_or_404(RedTable)
-        elif color_name == 'White':
-            color_variant = get_object_or_404(WhiteTable)
-        elif color_name == 'Yellow':
-            color_variant = get_object_or_404(YellowTable)
-        # Add more conditions for other color variants (e.g., Gray, White, etc.)
+        # Retrieve the product from the database
+        try:
+            product = ProductTable.objects.get(productid=productID)
+        except ProductTable.DoesNotExist:
+            return HttpResponseNotFound("Product not found.")
 
-        # Create sales reference
-        sales = SalesTable.objects.create(saledate=timezone.now())
+        # Retrieve size and color from their respective tables
+        try:
+            size = SizeTable.objects.get(sizeid=size_id)
+        except SizeTable.DoesNotExist:
+            return HttpResponseNotFound("Size not found.")
+        
+        try:
+            color = ColorTable.objects.get(colorid=color_id)
+        except ColorTable.DoesNotExist:
+            return HttpResponseNotFound("Color not found.")
+        
+        # Retrieve the price from PriceTable
+        price = PriceTable.objects.filter(priceid=1).first()  # You can adjust the priceID as needed
+        if price:
+            price_amount = price.amount
+        else:
+            return HttpResponseNotFound("Price not found.")
 
-        # Create order entry
-        order = OrderTable.objects.create(
-            productid=product,
-            sizeid=size,
-            colorid=color_variant,  # Reference to the color variant image from the selected table
-            quantity=quantity,
-            salesid=sales
-        )
+        # Prepare the cart item to store in the session
+        cart_item = {
+            'product_id': product.productid,
+            'product_name': product.productname,  # Assuming product_name is a field in ProductTable
+            'size': size.size,  # Assuming size_name is a field in SizeTable
+            'color': color.colorName,  # Assuming color_name is a field in ColorTable
+            'quantity': quantity,
+            'price': price_amount  # Assuming price is a field in ProductTable or you can use the dynamic price logic
+        }
 
-        return redirect('cart_page')  # or your desired destination
-    else:
-        return redirect('productPage', productID=productID)
+        # Retrieve the current cart from the session or initialize an empty one
+        cart = request.session.get('cart', [])
 
+        # Check if the item is already in the cart, if so, update quantity
+        item_exists = False
+        for item in cart:
+            if item['product_id'] == cart_item['product_id'] and item['size'] == cart_item['size'] and item['color'] == cart_item['color']:
+                item['quantity'] = str(int(item['quantity']) + int(cart_item['quantity']))
+                item_exists = True
+                break
+
+        # If the item doesn't exist in the cart, add it
+        if not item_exists:
+            cart.append(cart_item)
+
+        # Save the updated cart to the session
+        request.session['cart'] = cart
+        request.session.save()
+
+        return redirect('cart')  # Redirect to cart page after adding the item
+
+    return HttpResponseBadRequest("Invalid method.")
+
+
+def remove_from_cart(request, product_id, size, color):
+    # Retrieve the cart from the session
+    cart = request.session.get('cart', [])
+
+    # Filter out the item to be removed based on product_id, size, and color
+    cart = [item for item in cart if not (item['product_id'] == int(product_id) and item['size'] == size and item['color'] == color)]
+
+    # Update the session with the new cart
+    request.session['cart'] = cart
+    request.session.save()
+
+    # Redirect back to the cart page
+    return redirect('cart')  # Replace 'cart' with the actual name of your cart page
+
+def cart(request):
+    cart_items = request.session.get('cart', [])
+    print("Cart items in session:", cart_items)  # Debugging
+    
+    if not cart_items:
+        print("Cart is empty or data not found in session.")  # Debugging
+    
+    return render(request, 'cart_debug.html', {'cart_items': cart_items})
 
 def contacts(request):
     return render(request, 'contacts.html')
-
-def cart(request):
-    return render(request, 'cart.html')
 
 def orderedItems(request):
     return render(request, 'orderItems.html')
@@ -167,7 +257,6 @@ def inventory(request):
 
 def analysis(request):
     return render(request, 'analysis.html')
-
 
 def variantCreation(request):
     if request.method == 'POST':

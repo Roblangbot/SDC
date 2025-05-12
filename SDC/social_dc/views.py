@@ -13,6 +13,7 @@ from django.db.models.functions import TruncMonth, TruncDay
 from django.utils import timezone
 from .models import (ProductTable, BeigeTable, RedTable, BlueTable, GrayTable, BrownTable, YellowTable, WhiteTable, OrangeTable, PriceTable, SizeTable, ColorTable, OrderTable, SalesTable)
 from .forms import ProductForm, variantForm
+from .utils import enrich_cart
 
 
 def adminRegister(request):
@@ -66,18 +67,29 @@ def admin_logout(request):
 # Create your views here.
 
 def home(request):
-    return render(request, 'index.html')
+    cart_items, total_price = enrich_cart(request.session)
+
+    return render(request, 'index.html', {'cart_items': cart_items, 'total_price': total_price})
 
 def faq(request):
-    return render(request, 'faq.html')
+    cart_items, total_price = enrich_cart(request.session)
+
+    return render(request, 'faq.html', {'cart_items': cart_items, 'total_price': total_price})
 
 def aboutus(request):
-    return render(request, 'about.html')
+    cart_items, total_price = enrich_cart(request.session)
+
+    return render(request, 'about.html', {'cart_items': cart_items, 'total_price': total_price})
+
+def contacts(request):
+    cart_items, total_price = enrich_cart(request.session)
+    
+    return render(request, 'contacts.html', {'cart_items': cart_items, 'total_price': total_price})
 
 def product(request):
     # Fetch all products
     products = ProductTable.objects.all()
-    
+    cart_items, total_price = enrich_cart(request.session)
     # Fetch the price once, assuming it's the same for all products
     design_price = PriceTable.objects.filter(priceid=1).first()
     price = design_price.amount if design_price else 0
@@ -91,13 +103,14 @@ def product(request):
             'price': price,
         })
 
-    return render(request, 'product.html', {'products': product_data})
+    return render(request, 'product.html', {'products': product_data, 'cart_items': cart_items, 'total_price': total_price})
 
 def productPage(request, productID):
     product = get_object_or_404(ProductTable, productid=productID)
     amount = PriceTable.objects.filter(priceid=1).first()
     price = amount.amount if amount else 0
     size_variants = SizeTable.objects.all()
+    cart_items, total_price = enrich_cart(request.session)
 
     # Initialize the list of color variants
     color_variants = []
@@ -165,11 +178,14 @@ def productPage(request, productID):
         'product': product,
         'price': price,
         'color_variants': color_variants,
-        'size_variants': size_variants, 
+        'size_variants': size_variants,
+        'cart_items': cart_items,
+        'total_price': total_price
     })
 
 def add_to_cart(request, productID):
     if request.method == 'POST':
+        image_url = request.POST.get('imageURL')
         # Get the size, color, and quantity from the form data
         size_id = request.POST.get('sizeID')
         color_id = request.POST.get('colorID')
@@ -210,7 +226,8 @@ def add_to_cart(request, productID):
             'size': size.size,  # Assuming size_name is a field in SizeTable
             'color': color.colorName,  # Assuming color_name is a field in ColorTable
             'quantity': quantity,
-            'price': price_amount  # Assuming price is a field in ProductTable or you can use the dynamic price logic
+            'price': price_amount,  # Assuming price is a field in ProductTable or you can use the dynamic price logic
+            'image_url': image_url  
         }
 
         # Retrieve the current cart from the session or initialize an empty one
@@ -231,8 +248,11 @@ def add_to_cart(request, productID):
         # Save the updated cart to the session
         request.session['cart'] = cart
         request.session.save()
+        # Show success message
+        messages.success(request, f"'{product.productname}' has been added to your cart.")
 
-        return redirect('cart')  # Redirect to cart page after adding the item
+        # Redirect to product page
+        return redirect('productPage', productID=product.productid)
 
     return HttpResponseBadRequest("Invalid method.")
 
@@ -241,27 +261,65 @@ def remove_from_cart(request, product_id, size, color):
     # Retrieve the cart from the session
     cart = request.session.get('cart', [])
 
-    # Filter out the item to be removed based on product_id, size, and color
-    cart = [item for item in cart if not (item['product_id'] == int(product_id) and item['size'] == size and item['color'] == color)]
-
-    # Update the session with the new cart
+    # Remove the item
+    cart = [
+        item for item in cart
+        if not (
+            item['product_id'] == int(product_id)
+            and item['size'] == size
+            and item['color'] == color
+        )
+    ]
     request.session['cart'] = cart
     request.session.save()
 
+    # Add a success message
+    messages.success(request, "Item has been removed from your cart.")
+
     # Redirect back to the cart page
-    return redirect('cart')  # Replace 'cart' with the actual name of your cart page
+    return redirect(request.META.get('HTTP_REFERER', 'home'))  # fallback to 'home' if no referer
+
+def update_cart_quantity(request, product_id, size, color):
+    if request.method == 'POST':
+        new_quantity = request.POST.get('quantity')
+        if not new_quantity or int(new_quantity) <= 0:
+            messages.error(request, "Invalid quantity.")
+            return redirect(request.META.get('HTTP_REFERER', 'cart'))
+
+        cart = request.session.get('cart', [])
+
+        for item in cart:
+            if (
+                item['product_id'] == int(product_id)
+                and item['size'] == size
+                and item['color'] == color
+            ):
+                item['quantity'] = str(new_quantity)
+                break
+
+        request.session['cart'] = cart
+        request.session.save()
+        messages.success(request, "Quantity updated.")
+        return redirect(request.META.get('HTTP_REFERER', 'home'))
+
+    # Redirect back to the cart page
+    return redirect(request.META.get('HTTP_REFERER', 'home'))  # fallback to 'home' if no referer
+
 
 def cart(request):
     cart_items = request.session.get('cart', [])
-    print("Cart items in session:", cart_items)  # Debugging
-    
-    if not cart_items:
-        print("Cart is empty or data not found in session.")  # Debugging
-    
-    return render(request, 'cart_debug.html', {'cart_items': cart_items})
 
-def contacts(request):
-    return render(request, 'contacts.html')
+    # Add subtotal per item and calculate total
+    total_price = 0
+    for item in cart_items:
+        item['subtotal'] = int(item['price']) * int(item['quantity'])
+        total_price += item['subtotal']
+
+    return render(request, 'cart.html', {
+        'cart_items': cart_items,
+        'total_price': total_price,
+    })
+
 
 @login_required(login_url='adminLogin')
 def productCreation(request):

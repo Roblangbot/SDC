@@ -27,6 +27,11 @@
                     <div class="container-fluid">
                         <h3 class="text-success mb-4">Price: PHP{{ price }}</h3>
                     </div>
+                                <!-- Quantity -->
+                    <div class="container-fluid mb-3">
+                        <label for="quantity" class="form-label">Quantity:</label>
+                        <input type="number" name="quantity" id="quantity" min="1" value="1" class="form-control" required>
+                    </div>
     
                     <!-- Size Selection -->
                     <div class="container-fluid">
@@ -50,21 +55,18 @@
                             {% for color in color_variants %}
                                 <div class="col-6 col-sm-4">
                                     <label class="btn btn-outline-secondary w-100">
-                                        <input type="radio" name="colorID" value="{{ color.id }}" required class="d-none" {% if color.name == 'Black' %}checked{% endif %}>
+                                        <input type="radio" name="colorID" value="{{ color.id }}" data-image="{{ color.image_url }}" required class="d-none" {% if color.name == 'Black' %}checked{% endif %}>
                                         <img src="{{ color.image_url }}" class="card-img-top" alt="{{ color.name }} Image">
                                     </label>
                                 </div>
                             {% endfor %}
-                        </div>                        
+                        </div>
+                        <input type="hidden" name="imageURL" id="selectedImageURL">                        
                     </div>
                 </div>
             </div>
         
-            <!-- Quantity -->
-            <div class="mb-3">
-                <label for="quantity" class="form-label">Quantity:</label>
-                <input type="number" name="quantity" id="quantity" min="1" value="1" class="form-control" required>
-            </div>
+
         
             <button type="submit" class="btn btn-success">Add to Cart</button>
         </form>       
@@ -101,6 +103,26 @@
             this.closest('label').classList.add('active');  // Add active to the selected color
         });
     });
+    document.addEventListener('DOMContentLoaded', function () {
+        const radios = document.querySelectorAll('input[name="colorID"]');
+        const hiddenInput = document.getElementById('selectedImageURL');
+
+        function updateImageURL() {
+            const selected = document.querySelector('input[name="colorID"]:checked');
+            if (selected) {
+                hiddenInput.value = selected.dataset.image;
+            }
+        }
+
+        // Set default on load
+        updateImageURL();
+
+        // Update on selection
+        radios.forEach(radio => {
+            radio.addEventListener('change', updateImageURL);
+        });
+    });
+
 </script>
 
 {% endblock %}

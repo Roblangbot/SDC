@@ -10,6 +10,22 @@
     <link rel="stylesheet" href="{% static 'styles/styles.css' %}">
 </head>
 <body>
+    {% if messages %}
+      <div aria-live="polite" aria-atomic="true" class="position-fixed left-50 p-3" style="z-index: 1055;">
+        {% for message in messages %}
+        <div class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+
     <nav class="navbar navbar-expand-lg">
         <div class="container-fluid mx-5 fs-5 fw-semibold">
           <a class="navbar-brand" href="{% url "home" %}">
@@ -73,10 +89,10 @@
               <p class="fw-semibold">Like, Follow to receive updates.</p>
             </div>
             <div class="companyInfo-Section fw-semibold">
-              <a href="https://www.facebook.com/SocialdistrictclothingPH" target="blank" class="text-secondary-emphasis text-decoration-none hover-white" ><img src="..." alt="Facebook"></a>
-              <a href="https://shopee.ph/socialdistrictclothing2022?smtt=0.498832252-1660296740.9" target="blank" class="text-secondary-emphasis text-decoration-none hover-white"><img src="..." alt="Shopee"></a>
+              <a href="https://www.facebook.com/SocialdistrictclothingPH" target="blank" class="text-secondary-emphasis text-decoration-none hover-white" ><img class="footerLogo" src="{% static 'images/fbSVG.svg' %}" alt="Facebook"></a>
+              {% comment %} <a href="https://shopee.ph/socialdistrictclothing2022?smtt=0.498832252-1660296740.9" target="blank" class="text-secondary-emphasis text-decoration-none hover-white"><img class="footerLogo" src="{% static 'images/shopeeSVG.svg' %}" alt="Shopee"></a> {% endcomment %}
               <a href="https://www.tiktok.com/@socialdistrictclothing?_r=1&_d=secCgYIASAHKAESPgo8V29RLpVXK9ODFtDL%2FWe6Cz9aV5gPtRVlYFRL8BlP4LufpqJgyRc9nwY934QNUSW5NqL%2F%2BtIAwFJvijvEGgA%3D&_svg=1&checksum=8ef8520b440555a092b5433a6879cf5ca467ea92e2e81f418d98bba04e8db0a8&sec_uid=MS4wLjABAAAA8eSuiWpXmUYcJfYmnRoQV5qx0RKQWKueji6GhsYOjWEW4pl48mGu5kr22O0J4Vdl&sec_user_id=MS4wLjABAAAA8eSuiWpXmUYcJfYmnRoQV5qx0RKQWKueji6GhsYOjWEW4pl48mGu5kr22O0J4Vdl&share_app_id=1180&share_author_id=7065972961509934081&share_link_id=B33B1020-C024-47DD-8ABB-769EA4DA31DA&sharer_language=en&social_share_type=4&source=h5_t&timestamp=1746289367&tt_from=copy&u_code=e09la83akgbg0l&ug_btm=b8727%2Cb0&user_id=7065972961509934081"
-              target="blank" class="text-secondary-emphasis text-decoration-none hover-white"><img src="..." alt="Tiktok"></a>
+              target="blank" class="text-secondary-emphasis text-decoration-none hover-white"><img class="footerLogo" src="{% static 'images/tiktokSVG.svg' %}" alt="Tiktok"></a>
             </div>
           </div>
         </div>
@@ -90,31 +106,62 @@
       </div>
       <div class="offcanvas-body">
         {% if cart_items %}
-            {% for item in cart_items %}
-                <div class="mb-3 border-bottom pb-2">
-                    <strong>{{ item.product_name }}</strong><br>  <!-- Corrected field names -->
-                    Size: {{ item.size }}<br>  <!-- Corrected field names -->
-                    Color: {{ item.color }}<br>  <!-- Corrected field names -->
-                    Quantity: {{ item.quantity }}<br>
-                    <span class="text-success">₱{{ item.price }}</span>
-                    
-                    <!-- Remove Button -->
-                    <form method="POST" action="{% url 'remove_from_cart' item.product_id item.size item.color %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-sm mt-2">Remove</button>
-                    </form>
-                </div>
-            {% endfor %}
+          {% for item in cart_items %}
+          <div class="container d-flex align-items-start mb-3 border-bottom pb-2">
+            
+            <!-- Image Column -->
+            <div class="container-fluid me-3">
+                <img src="{{ item.image_url }}" 
+                    class="img-fluid rounded shadow" 
+                    style="width: 100%; height: 100%; object-fit: cover;" 
+                    alt="{{ item.color }} image">
+            </div>
+
+            <!-- Info Column -->
+            <div class="container-fluid">
+              <strong>{{ item.product_name }}</strong><br>
+              Size: {{ item.size }}<br>
+              Color: {{ item.color }}<br>
+              <!-- Quantity Update Form -->
+              <form method="POST" action="{% url 'update_cart_quantity' item.product_id item.size item.color %}" class="d-flex align-items-center mt-2">
+                {% csrf_token %}
+                <input type="number" name="quantity" value="{{ item.quantity }}" min="1" class="form-control form-control-sm me-2" style="width: 80px;">
+                <button type="submit" class="btn btn-primary btn-sm">Update</button>
+              </form>
+
+              <span class="d-block mt-2">
+                Price: ₱{{ item.price }}<br>
+                Subtotal: <strong class="text-success">₱{{ item.subtotal }}</strong>
+              </span>
+
+              <!-- Remove Button -->
+              <form method="POST" action="{% url 'remove_from_cart' item.product_id item.size item.color %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm mt-2">
+                  <img src="{% static 'images/trashcanSVG.svg' %}" alt="DELETE" style="width: 20px;">
+                </button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+          <div class="border-top pt-3 mt-3 text-end">
+            <h5>Total: <span class="text-success">₱{{ total_price }}</span></h5>
+          </div>
         {% else %}
-            <p>Your cart is empty.</p>
+          <p>Your cart is empty.</p>
         {% endif %}
-        <!-- Optionally, include a checkout button -->
-        {% comment %}
-        <a href="{% url 'checkout' %}" class="btn btn-primary w-100 mt-3">Checkout</a>
-        {% endcomment %}
+        
+      </div>
     </div>
-    </div>
-    
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const toastElList = [].slice.call(document.querySelectorAll('.toast'))
+        toastElList.map(function (toastEl) {
+          new bootstrap.Toast(toastEl, { delay: 4000 }).show()
+        })
+      })
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>

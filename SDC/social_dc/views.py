@@ -14,6 +14,7 @@ from django.utils import timezone
 from .models import (ProductTable, BeigeTable, RedTable, BlueTable, GrayTable, BrownTable, YellowTable, WhiteTable, OrangeTable, PriceTable, SizeTable, ColorTable, OrderTable, SalesTable)
 from .forms import ProductForm, variantForm
 from .utils import enrich_cart
+from django.core.paginator import Paginator
 
 
 def adminRegister(request):
@@ -102,8 +103,16 @@ def product(request):
             'productimage': product.productimage,
             'price': price,
         })
+    
+     # Pagination setup
+    paginator = Paginator(product_data, 16)  # Show 10 products per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
-    return render(request, 'product.html', {'products': product_data, 'cart_items': cart_items, 'total_price': total_price})
+    return render(request, 'product.html', {
+        'page_obj': page_obj,
+        'cart_items': cart_items,
+        'total_price': total_price})
 
 def productPage(request, productID):
     product = get_object_or_404(ProductTable, productid=productID)

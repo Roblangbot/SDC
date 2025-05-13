@@ -6,6 +6,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
+from django.conf import settings
+from django.core.mail import send_mail
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponseBadRequest, HttpResponseNotFound
 from django.db.models import Sum, Count
@@ -85,7 +87,37 @@ def aboutus(request):
 def contacts(request):
     cart_items, total_price = enrich_cart(request.session)
     
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        message = request.POST.get('message')
+
+        subject = 'New Contact Form Submission'
+        body = f"From: {email}\n\nMessage:\n{message}"
+
+        try:
+            send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, ['yourdestination@example.com'])
+            messages.success(request, "Your message has been sent successfully!")
+        except:
+            messages.error(request, "Something went wrong. Please try again.")
+
+        return redirect('contact')  # or redirect to a thank-you page
+
     return render(request, 'contacts.html', {'cart_items': cart_items, 'total_price': total_price})
+def checkout(request):
+    cart_items = request.session.get('cart', [])
+    if not cart_items:
+        messages.warning(request, "Your cart is empty.")
+        return redirect('product')
+
+    total_price = 0
+    for item in cart_items:
+        item['subtotal'] = int(item['price']) * int(item['quantity'])
+        total_price += item['subtotal']
+
+    return render(request, 'checkout.html', {
+        'cart_items': cart_items,
+        'total_price': total_price
+    })
 
 def product(request):
     # Fetch all products

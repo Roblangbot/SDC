@@ -9,15 +9,16 @@
         </div>
         <div class="container-fluid d-flex mb-5">
             <div class="container">
-                <form>
+                <form method="POST" action="{% url 'contacts' %}">
+                    {% csrf_token %}
                     <div class="mb-3">
                         <label for="FormControlInput1" class="form-label">Email address:</label>
-                        <input type="email" class="form-control" id="FormControlInput1" placeholder="name@example.com">
-                      </div>
-                      <div class="mb-3">
+                        <input type="email" name="email" class="form-control" id="FormControlInput1" placeholder="name@example.com" required>
+                    </div>
+                    <div class="mb-3">
                         <label for="exampleFormControlTextarea1" class="form-label">Email Us:</label>
-                        <textarea class="form-control" id="exampleFormControlTextarea1" rows="3"></textarea>
-                      </div>
+                        <textarea class="form-control" name="message" id="exampleFormControlTextarea1" rows="3" required></textarea>
+                    </div>
                     <button type="submit" class="btn btn-warning">Submit</button>
                 </form>
             </div>

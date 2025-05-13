@@ -3,4 +3,21 @@
 {% block title %} Checkout Page {% endblock %} 
 {% block content %}
 
+<div class="container py-5">
+  <h2>Checkout</h2>
+  {% for item in cart_items %}
+  <div class="container d-flex">
+    <div class="container-fluid m-5">
+        <img src="{{item.image_url}}" alt="" style="width: 150px;">
+    </div>
+    <div class="container-fluid m-5">
+        <p>{{ item.product_name }} - {{ item.size }} - {{ item.color }} × {{ item.quantity }} = ₱{{ item.subtotal }}</p>
+    </div>
+
+  </div>
+  {% endfor %}
+  <h4 class="mt-4">Total: ₱{{ total_price }}</h4>
+  <button class="btn btn-primary mt-3">Confirm Order</button>
+</div>
+
 {% endblock %}

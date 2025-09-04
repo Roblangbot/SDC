@@ -9,14 +9,15 @@ from django.contrib import messages
 from django.conf import settings
 from django.core.mail import send_mail
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponseBadRequest, HttpResponseNotFound
+from django.http import HttpResponseBadRequest, HttpResponseNotFound, JsonResponse, HttpResponseRedirect
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth, TruncDay
 from django.utils import timezone
-from .models import (ProductTable, BeigeTable, RedTable, BlueTable, GrayTable, BrownTable, YellowTable, WhiteTable, OrangeTable, PriceTable, SizeTable, ColorTable, OrderTable, SalesTable)
-from .forms import ProductForm, variantForm
+from .models import (ProductTable, PriceTable, SizeTable, ColorTable, OrderTable, SalesTable, ProdNameTable)
+from .forms import ProductForm
 from .utils import enrich_cart
 from django.core.paginator import Paginator
+
 
 
 def adminRegister(request):
@@ -46,7 +47,7 @@ def adminRegister(request):
         login(request, user)
 
         # Redirect to admin dashboard or a welcome page
-        return redirect('productCreation')  # Change to your desired URL or view
+        return redirect('adminDashboard')  # Change to your desired URL or view
     return render(request, 'staffregister.html')
 
 def adminLogin(request):
@@ -57,7 +58,7 @@ def adminLogin(request):
 
         if user is not None and user.is_staff:  # Check if user exists and is staff
             login(request, user)  # Log the user in
-            return redirect('productCreation')  # Redirect to product creation page
+            return redirect('adminDashboard')  # Redirect to product creation page
         else:
             messages.error(request, 'Invalid credentials or not authorized.')  # Error message if authentication fails
     
@@ -66,7 +67,7 @@ def adminLogin(request):
 
 def admin_logout(request):
     logout(request)
-    return redirect('staffLogin.html')
+    return redirect('adminLogin')
 # Create your views here.
 
 def home(request):
@@ -103,6 +104,7 @@ def contacts(request):
         return redirect('contact')  # or redirect to a thank-you page
 
     return render(request, 'contacts.html', {'cart_items': cart_items, 'total_price': total_price})
+
 def checkout(request):
     cart_items = request.session.get('cart', [])
     if not cart_items:
@@ -120,287 +122,236 @@ def checkout(request):
     })
 
 def product(request):
-    # Fetch all products
-    products = ProductTable.objects.all()
+    # --- FILTER HANDLING ---
+    filter_type = request.GET.get("filter")  # e.g., ?filter=best_seller
+
+    # Always fetch the black color (used as display image)
+    black_color = ColorTable.objects.filter(colorname__iexact="Black").first()
+
+    # Count the total number of colors available
+    total_colors = ColorTable.objects.count()
+
+    if not black_color:
+        products = ProductTable.objects.none()
+    else:
+        # Default query: only show black variant
+        products = ProductTable.objects.filter(colorid=black_color).select_related("prodnameid", "colorid")
+
+        # Apply filters dynamically
+        if filter_type == "best_seller":
+            products = products.annotate(order_count=Count("ordertable")).order_by("-order_count")[:10]
+
+        elif filter_type == "complete_color":
+            # Products that have all color variants
+            products = products.annotate(
+                color_variants=Count("prodnameid__producttable", distinct=True)
+            ).filter(color_variants=total_colors)
+
+        elif filter_type == "limited_color":
+            # Products that have fewer color variants than total available
+            products = products.annotate(
+                color_variants=Count("prodnameid__producttable", distinct=True)
+            ).filter(color_variants__lt=total_colors)
+
+    # --- CART + PRICE ---
     cart_items, total_price = enrich_cart(request.session)
-    # Fetch the price once, assuming it's the same for all products
+
     design_price = PriceTable.objects.filter(priceid=1).first()
     price = design_price.amount if design_price else 0
 
+    # --- PRODUCT DATA ---
     product_data = []
     for product in products:
         product_data.append({
-            'id': product.productid,
-            'productname': product.productname,
-            'productimage': product.productimage,
-            'price': price,
+            "id": product.productid,
+            "productname": product.prodnameid.name if product.prodnameid else "Unnamed",
+            "productimage": product.productimage,
+            "price": price,
         })
-    
-     # Pagination setup
-    paginator = Paginator(product_data, 16)  # Show 10 products per page
-    page_number = request.GET.get('page')
+
+    # --- PAGINATION ---
+    paginator = Paginator(product_data, 12)
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'product.html', {
-        'page_obj': page_obj,
-        'cart_items': cart_items,
-        'total_price': total_price})
+    return render(request, "product.html", {
+        "page_obj": page_obj,
+        "cart_items": cart_items,
+        "total_price": total_price
+    })
 
 def productPage(request, productID):
-    product = get_object_or_404(ProductTable, productid=productID)
-    amount = PriceTable.objects.filter(priceid=1).first()
-    price = amount.amount if amount else 0
+ # Main product (with joins for prodname and color)
+    product = get_object_or_404(
+        ProductTable.objects.select_related("prodnameid", "colorid"),
+        productid=productID
+    )
+
+    # Get Black color object
+    black_color = ColorTable.objects.filter(colorname__iexact="Black").first()
+
+    # Default variant: Prefer Black if it exists, otherwise the current product
+    default_variant = ProductTable.objects.filter(
+        prodnameid=product.prodnameid,
+        colorid=black_color
+    ).first() or product
+
+    # Fetch all other color variants (excluding Black)
+    colors = ProductTable.objects.filter(
+        prodnameid=product.prodnameid
+    )
+
+    # ✅ Define color_variants_data
+    color_variants_data = []
+    for variant in colors:
+        color_variants_data.append({
+            "id": variant.productid,    
+            "color": variant.colorid.colorname if variant.colorid else "Unknown",
+            "image": variant.productimage,
+        })
+
+    # Price
+    price = default_variant.priceid.amount if default_variant.priceid else 0
+
+    # Sizes + cart
     size_variants = SizeTable.objects.all()
     cart_items, total_price = enrich_cart(request.session)
 
-    # Initialize the list of color variants
-    color_variants = []
-
-    # Adding the 'Black' color variant
-    black_color = ColorTable.objects.filter(colorName__iexact="Black").first()
-    if black_color:
-        color_variants.append({
-            'name': 'Black',
-            'image_url': product.productimage,
-            'id': black_color.colorid  # Color ID for Black from ColorTable
-        })
-
-    # Add other colors (Blue, Beige, Red, etc.) based on their IDs and images
-    if product.blueid:
-        color_variants.append({
-            'name': 'Blue',
-            'image_url': product.blueid.blueimage,
-            'id': product.blueid.colorid  # Ensure that blueid has colorid field
-        })
-    if product.beigeid:
-        color_variants.append({
-            'name': 'Beige',
-            'image_url': product.beigeid.beigeimage,
-            'id': product.beigeid.colorid  # Ensure that beigeid has colorid field
-        })
-    if product.redid:
-        color_variants.append({
-            'name': 'Red',
-            'image_url': product.redid.redimage,
-            'id': product.redid.colorid  # Ensure that redid has colorid field
-        })
-    if product.grayid:
-        color_variants.append({
-            'name': 'Gray',
-            'image_url': product.grayid.grayimage,
-            'id': product.grayid.colorid  # Ensure that grayid has colorid field
-        })
-    if product.whiteid:
-        color_variants.append({
-            'name': 'White',
-            'image_url': product.whiteid.whiteimage,
-            'id': product.whiteid.colorid  # Ensure that whiteid has colorid field
-        })
-    if product.brownid:
-        color_variants.append({
-            'name': 'Brown',
-            'image_url': product.brownid.brownimage,
-            'id': product.brownid.colorid  # Ensure that brownid has colorid field
-        })
-    if product.orangeid:
-        color_variants.append({
-            'name': 'Orange',
-            'image_url': product.orangeid.orangeimage,
-            'id': product.orangeid.colorid  # Ensure that orangeid has colorid field
-        })
-    if product.yellowid:
-        color_variants.append({
-            'name': 'Yellow',
-            'image_url': product.yellowid.yellowimage,
-            'id': product.yellowid.colorid  # Ensure that yellowid has colorid field
-        })
-
+    # ✅ Pass it to template
     return render(request, 'productPage.html', {
-        'product': product,
-        'price': price,
-        'color_variants': color_variants,
-        'size_variants': size_variants,
-        'cart_items': cart_items,
-        'total_price': total_price
+        "product": default_variant,
+        "color_variants_data": color_variants_data,
+        "price": price,
+        "size_variants": size_variants,
+        "cart_items": cart_items,
+        "total_price": total_price,
     })
 
-def add_to_cart(request, productID):
+def add_to_cart(request):
     if request.method == 'POST':
-        image_url = request.POST.get('imageURL')
-        # Get the size, color, and quantity from the form data
         size_id = request.POST.get('sizeID')
-        color_id = request.POST.get('colorID')
         quantity = request.POST.get('quantity')
+        product_id = request.POST.get('productID')
 
-        # Ensure all required data is provided
-        if not size_id or not color_id or not quantity:
+        if not product_id:
+            return HttpResponseBadRequest("Product ID is missing.")
+        if not size_id or not quantity:
             return HttpResponseBadRequest("Missing required data.")
 
-        # Retrieve the product from the database
         try:
-            product = ProductTable.objects.get(productid=productID)
+            product = ProductTable.objects.select_related('colorid', 'prodnameid', 'priceid').get(productid=product_id)
         except ProductTable.DoesNotExist:
-            return HttpResponseNotFound("Product not found.")
+            return HttpResponseBadRequest("Product does not exist.")
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
 
-        # Retrieve size and color from their respective tables
         try:
             size = SizeTable.objects.get(sizeid=size_id)
         except SizeTable.DoesNotExist:
-            return HttpResponseNotFound("Size not found.")
-        
-        try:
-            color = ColorTable.objects.get(colorid=color_id)
-        except ColorTable.DoesNotExist:
-            return HttpResponseNotFound("Color not found.")
-        
-        # Retrieve the price from PriceTable
-        price = PriceTable.objects.filter(priceid=1).first()  # You can adjust the priceID as needed
-        if price:
-            price_amount = price.amount
-        else:
-            return HttpResponseNotFound("Price not found.")
+            return HttpResponseBadRequest("Size does not exist.")
 
-        # Prepare the cart item to store in the session
+        # If no errors, continue processing...
         cart_item = {
             'product_id': product.productid,
-            'product_name': product.productname,  # Assuming product_name is a field in ProductTable
-            'size': size.size,  # Assuming size_name is a field in SizeTable
-            'color': color.colorName,  # Assuming color_name is a field in ColorTable
+            'product_name': product.prodnameid.name,
+            'size': size.size,
+            'color': product.colorid.colorname,
             'quantity': quantity,
-            'price': price_amount,  # Assuming price is a field in ProductTable or you can use the dynamic price logic
-            'image_url': image_url  
+            'price': product.priceid.amount,
+            'image_url': product.productimage,
         }
 
-        # Retrieve the current cart from the session or initialize an empty one
         cart = request.session.get('cart', [])
 
-        # Check if the item is already in the cart, if so, update quantity
-        item_exists = False
+        # Merge if duplicate
         for item in cart:
-            if item['product_id'] == cart_item['product_id'] and item['size'] == cart_item['size'] and item['color'] == cart_item['color']:
-                item['quantity'] = str(int(item['quantity']) + int(cart_item['quantity']))
-                item_exists = True
+            if item['product_id'] == cart_item['product_id'] and item['size'] == cart_item['size']:
+                item['quantity'] = str(int(item['quantity']) + int(quantity))
                 break
-
-        # If the item doesn't exist in the cart, add it
-        if not item_exists:
+        else:
             cart.append(cart_item)
 
-        # Save the updated cart to the session
         request.session['cart'] = cart
-        request.session.save()
-        # Show success message
-        messages.success(request, f"'{product.productname}' has been added to your cart.")
+        request.session.modified = True
 
-        # Redirect to product page
         return redirect('productPage', productID=product.productid)
 
     return HttpResponseBadRequest("Invalid method.")
 
 
-def remove_from_cart(request, product_id, size, color):
-    # Retrieve the cart from the session
-    cart = request.session.get('cart', [])
+def remove_from_cart(request, product_id, size):
+    cart = request.session.get("cart", [])
+    cart = [item for item in cart if not (item["product_id"] == product_id and item["size"] == size)]
 
-    # Remove the item
-    cart = [
-        item for item in cart
-        if not (
-            item['product_id'] == int(product_id)
-            and item['size'] == size
-            and item['color'] == color
-        )
-    ]
-    request.session['cart'] = cart
-    request.session.save()
+    request.session["cart"] = cart
+    request.session.modified = True
 
-    # Add a success message
-    messages.success(request, "Item has been removed from your cart.")
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return HttpResponseRedirect(referer)
 
-    # Redirect back to the cart page
-    return redirect(request.META.get('HTTP_REFERER', 'home'))  # fallback to 'home' if no referer
 
-def update_cart_quantity(request, product_id, size, color):
-    if request.method == 'POST':
-        new_quantity = request.POST.get('quantity')
-        if not new_quantity or int(new_quantity) <= 0:
-            messages.error(request, "Invalid quantity.")
-            return redirect(request.META.get('HTTP_REFERER', 'cart'))
-
-        cart = request.session.get('cart', [])
+def update_cart_quantity(request, product_id, size):
+    if request.method == "POST":
+        new_qty = int(request.POST.get("quantity", 1))
+        cart = request.session.get("cart", [])
 
         for item in cart:
-            if (
-                item['product_id'] == int(product_id)
-                and item['size'] == size
-                and item['color'] == color
-            ):
-                item['quantity'] = str(new_quantity)
+            if item["product_id"] == product_id and item["size"] == size:
+                item["quantity"] = new_qty
+                item["subtotal"] = item["quantity"] * item["price"]
                 break
 
-        request.session['cart'] = cart
-        request.session.save()
-        messages.success(request, "Quantity updated.")
-        return redirect(request.META.get('HTTP_REFERER', 'home'))
+        request.session["cart"] = cart
+        request.session.modified = True
 
-    # Redirect back to the cart page
-    return redirect(request.META.get('HTTP_REFERER', 'home'))  # fallback to 'home' if no referer
-
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return HttpResponseRedirect(referer)
 
 def cart(request):
-    cart_items = request.session.get('cart', [])
+    cart_items = request.session.get("cart", [])
 
-    # Add subtotal per item and calculate total
+    # Calculate subtotal per item & total
     total_price = 0
     for item in cart_items:
-        item['subtotal'] = int(item['price']) * int(item['quantity'])
-        total_price += item['subtotal']
+        item["subtotal"] = int(item["price"]) * int(item["quantity"])
+        total_price += item["subtotal"]
 
-    return render(request, 'cart.html', {
-        'cart_items': cart_items,
-        'total_price': total_price,
+    return render(request, "cart.html", {
+        "cart_items": cart_items,
+        "total_price": total_price,
     })
 
 
 @login_required(login_url='adminLogin')
-def productCreation(request):
-    # Load all color variant options
-    beige_variants = BeigeTable.objects.order_by('-beigeid')  # no `.values()`
-    yellow_variants = YellowTable.objects.order_by('-yellowid')
-    red_variants = RedTable.objects.order_by('-redid')
-    white_variants = WhiteTable.objects.order_by('-whiteid')
-    brown_variants = BrownTable.objects.order_by('-brownid')
-    blue_variants = BlueTable.objects.order_by('-blueid')
-    gray_variants = GrayTable.objects.order_by('-grayid')
-    orange_variants = OrangeTable.objects.order_by('-orangeid')
+def adminDashboard(request):
+    return render(request, 'adminDashboard.html')
 
+@login_required(login_url='adminLogin')
+def addProduct(request):
     if request.method == 'POST':
-        form = ProductForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('productCreation')  # Or another success page
-    else:
-        form = ProductForm()
+        product_form = ProductForm(request.POST)
 
-    return render(request, 'productCreation.html', {
-        'form': form,
-        'beige_variants': beige_variants,
-        'yellow_variants': yellow_variants,
-        'red_variants': red_variants,
-        'white_variants': white_variants,
-        'brown_variants': brown_variants,
-        'blue_variants': blue_variants,
-        'gray_variants': gray_variants,
-        'orange_variants': orange_variants,  # fixed typo
-    })
+        if product_form.is_valid():
+            product_form.save()
+            return redirect('addProduct')
+    else:
+        product_form = ProductForm()
+
+    products = ProductTable.objects.all()
+
+    context = {
+        'products' : products,
+        'product_form': product_form
+    }
+
+    return render(request, 'addProduct.html', context)
 
 @login_required(login_url='adminLogin')
 def orderedItems(request):
     # Fetch all orders with related tables (e.g., size, product, color)
     orders = OrderTable.objects.all().order_by('orderid')  # Ascendin
-
-    # Debugging: log the number of orders
-    print(f"Total Orders: {orders.count()}")  # This will show in your console or server log
 
     # Pass the orders to the template
     context = {
@@ -423,135 +374,98 @@ def analysis(request):
 
 @login_required(login_url='adminLogin')
 def variantCreation(request):
-    if request.method == 'POST':
-        form = variantForm(request.POST)
-        if form.is_valid():
-            # Check if a color image is provided and save to respective color variant tables
-            if form.cleaned_data.get('beige_image'):
-                beige_item = GrayTable(name=form.cleaned_data.get('name'), beigeimage=form.cleaned_data.get('beige_image'))
-                beige_item.save()
 
-            if form.cleaned_data.get('gray_image'):
-                gray_item = GrayTable(name=form.cleaned_data.get('name'), grayimage=form.cleaned_data.get('gray_image'))
-                gray_item.save()
-            
-            if form.cleaned_data.get('blue_image'):
-                blue_item = BlueTable(name=form.cleaned_data.get('name'), blueimage=form.cleaned_data.get('blue_image'))
-                blue_item.save()
-            
-            if form.cleaned_data.get('red_image'):
-                red_item = RedTable(name=form.cleaned_data.get('name'), redimage=form.cleaned_data.get('red_image'))
-                red_item.save()
-            
-            if form.cleaned_data.get('brown_image'):
-                brown_item = BrownTable(name=form.cleaned_data.get('name'), brownimage=form.cleaned_data.get('brown_image'))
-                brown_item.save()
-            
-            if form.cleaned_data.get('white_image'):
-                white_item = WhiteTable(name=form.cleaned_data.get('name'), whiteimage=form.cleaned_data.get('white_image'))
-                white_item.save()
-            
-            if form.cleaned_data.get('yellow_image'):
-                yellow_item = YellowTable(name=form.cleaned_data.get('name'), yellowimage=form.cleaned_data.get('yellow_image'))
-                yellow_item.save()
-            
-            if form.cleaned_data.get('orange_image'):
-                orange_item = OrangeTable(name=form.cleaned_data.get('name'), orangeimage=form.cleaned_data.get('orange_image'))
-                orange_item.save()
 
-            # Success message
-            messages.success(request, "Variant created successfully!")
-    else:
-        form = variantForm()  # Empty form when GET request
-
-    return render(request, 'variantCreation.html', {'form': form})
+    return render(request, 'variantCreation.html')
 
 # DATA ANALYSIS
 @login_required(login_url='adminLogin')
 def salesMonitor(request):
-    # Filter April to May 2023
-    start_date = date(2023, 4, 1)
-    end_date = date(2023, 5, 31)
+    # # Filter April to May 2023
+    # start_date = date(2023, 4, 1)
+    # end_date = date(2023, 5, 31)
 
-    # Filter order records through sales date
-    orders_apr_may = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))
-    sales_apr_may = SalesTable.objects.filter(sales_date__range=(start_date, end_date))
+    # # Filter order records through sales date
+    # orders_apr_may = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))
+    # sales_apr_may = SalesTable.objects.filter(sales_date__range=(start_date, end_date))
 
-    # Most Bought Color
-    color_data = orders_apr_may.values('colorid__colorName') \
-        .annotate(total=Sum('quantity')).order_by('-total')
+    # # Most Bought Color
+    # color_data = orders_apr_may.values('colorid__colorName') \
+    #     .annotate(total=Sum('quantity')).order_by('-total')
 
-    # Most Bought Design (Product)
-    design_data = orders_apr_may.values('productid__productname') \
-        .annotate(total=Sum('quantity')).order_by('-total')
+    # # Most Bought Design (Product)
+    # design_data = orders_apr_may.values('productid__productname') \
+    #     .annotate(total=Sum('quantity')).order_by('-total')
 
-    # Most Bought Size
-    size_data = orders_apr_may.values('sizeid__size') \
-        .annotate(total=Sum('quantity')).order_by('-total')
+    # # Most Bought Size
+    # size_data = orders_apr_may.values('sizeid__size') \
+    #     .annotate(total=Sum('quantity')).order_by('-total')
 
-    # Most Bought Product + Color Combo
-    combo_data = orders_apr_may.values('productid__productname', 'colorid__colorName') \
-        .annotate(total=Sum('quantity')).order_by('-total')
+    # # Most Bought Product + Color Combo
+    # combo_data = orders_apr_may.values('productid__productname', 'colorid__colorName') \
+    #     .annotate(total=Sum('quantity')).order_by('-total')
 
-    # Get daily or monthly sales based on the request
-    sales_timeframe = request.GET.get('timeframe', 'month')  # Default to 'month'
+    # # Get daily or monthly sales based on the request
+    # sales_timeframe = request.GET.get('timeframe', 'month')  # Default to 'month'
 
-    if sales_timeframe == 'day':
-        # Group by day if 'day' is selected
-        sales_data = sales_apr_may.annotate(day=TruncDay('sales_date')) \
-            .values('day').annotate(total=Count('salesid')).order_by('day')
-        timeframe_labels = [s['day'].strftime('%d %b') for s in sales_data]  # Display as "Day Month"
-    else:
-        # Group by month if 'month' is selected
-        sales_data = sales_apr_may.annotate(month=TruncMonth('sales_date')) \
-            .values('month').annotate(total=Count('salesid')).order_by('month')
-        timeframe_labels = [s['month'].strftime('%b').upper() for s in sales_data]  # Display as "Month"
+    # if sales_timeframe == 'day':
+    #     # Group by day if 'day' is selected
+    #     sales_data = sales_apr_may.annotate(day=TruncDay('sales_date')) \
+    #         .values('day').annotate(total=Count('salesid')).order_by('day')
+    #     timeframe_labels = [s['day'].strftime('%d %b') for s in sales_data]  # Display as "Day Month"
+    # else:
+    #     # Group by month if 'month' is selected
+    #     sales_data = sales_apr_may.annotate(month=TruncMonth('sales_date')) \
+    #         .values('month').annotate(total=Count('salesid')).order_by('month')
+    #     timeframe_labels = [s['month'].strftime('%b').upper() for s in sales_data]  # Display as "Month"
 
-    # Context for displaying sales data
-    context = {
-        'color_labels': [c['colorid__colorName'] for c in color_data],
-        'color_totals': [c['total'] for c in color_data],
+    # # Context for displaying sales data
+    # context = {
+    #     'color_labels': [c['colorid__colorName'] for c in color_data],
+    #     'color_totals': [c['total'] for c in color_data],
 
-        'design_labels': [d['productid__productname'] for d in design_data],
-        'design_totals': [d['total'] for d in design_data],
+    #     'design_labels': [d['productid__productname'] for d in design_data],
+    #     'design_totals': [d['total'] for d in design_data],
 
-        'size_labels': [s['sizeid__size'] for s in size_data],
-        'size_totals': [s['total'] for s in size_data],
+    #     'size_labels': [s['sizeid__size'] for s in size_data],
+    #     'size_totals': [s['total'] for s in size_data],
 
-        'combo_labels': [f"{c['productid__productname']}/{c['colorid__colorName']}" for c in combo_data[:5]],
-        'combo_totals': [c['total'] for c in combo_data[:5]],
+    #     'combo_labels': [f"{c['productid__productname']}/{c['colorid__colorName']}" for c in combo_data[:5]],
+    #     'combo_totals': [c['total'] for c in combo_data[:5]],
 
-        'sales_labels': timeframe_labels,
-        'sales_totals': [s['total'] for s in sales_data],
-    }
+    #     'sales_labels': timeframe_labels,
+    #     'sales_totals': [s['total'] for s in sales_data],
+    # }
 
-    # Convert dates to numerical values for regression
-    linearx = np.arange(len(sales_data)).reshape(-1, 1)
-    lineary = np.array([s['total'] for s in sales_data])
+    # # Convert dates to numerical values for regression
+    # linearx = np.arange(len(sales_data)).reshape(-1, 1)
+    # lineary = np.array([s['total'] for s in sales_data])
 
-    # Only run if enough data points
-    trend = None
-    if len(linearx) >= 2:
-        model = LinearRegression().fit(linearx, lineary)
-        slope = model.coef_[0]
-        if slope > 0:
-            trend = "Increasing trend"
-        elif slope < 0:
-            trend = "Decreasing trend"
-        else:
-            trend = "Stable sales"
+    # # Only run if enough data points
+    # trend = None
+    # if len(linearx) >= 2:
+    #     model = LinearRegression().fit(linearx, lineary)
+    #     slope = model.coef_[0]
+    #     if slope > 0:
+    #         trend = "Increasing trend"
+    #     elif slope < 0:
+    #         trend = "Decreasing trend"
+    #     else:
+    #         trend = "Stable sales"
 
-    # Add to context
-    context['sales_trend'] = trend
+    # # Add to context
+    # context['sales_trend'] = trend
 
-    sales_values = [s['total'] for s in sales_data]
-    if len(sales_values) >= 2:
-        mean = statistics.mean(sales_values)
-        stdev = statistics.stdev(sales_values)
-        outliers = [label for i, label in enumerate(timeframe_labels)
-                    if abs(sales_values[i] - mean) > 2 * stdev]
+    # sales_values = [s['total'] for s in sales_data]
+    # if len(sales_values) >= 2:
+    #     mean = statistics.mean(sales_values)
+    #     stdev = statistics.stdev(sales_values)
+    #     outliers = [label for i, label in enumerate(timeframe_labels)
+    #                 if abs(sales_values[i] - mean) > 2 * stdev]
 
-        context['outlier_periods'] = outliers
+    #     context['outlier_periods'] = outliers
 
 
-    return render(request, 'salesMonitor.html', context)
+    return render(request, 'salesMonitor.html', 
+                #   context
+                  )

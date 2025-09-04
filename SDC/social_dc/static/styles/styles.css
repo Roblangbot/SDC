@@ -199,3 +199,20 @@ abel.active {
     background-color: #e9f8ef;
   }
 
+
+input{
+    width: 500px;
+}
+
+table, th, td{
+    border: 5px solid grey !important;
+}
+
+.quantityUpdate {
+  -webkit-appearance: none;
+}
+
+/* Hide arrows in Firefox */
+.quantityUpdate {
+  -moz-appearance: textfield;
+}

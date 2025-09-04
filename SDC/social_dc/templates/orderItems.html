@@ -3,35 +3,37 @@
 {% block title %} Ordered Items {% endblock %} 
 {% block content %}
 
-<div class="container py-5">
-    <h2 class="mb-4">Ordered Items</h2>
-    
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Order ID</th>
-                <th>Product ID</th>
-                <th>Size ID</th>
-                <th>Color ID</th>
-                <th>Sales ID</th>
-                <th>Price ID</th>
-                <th>Quantity</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for order in orders %}
-            <tr>
-                <td>{{ order.orderid }}</td>
-                <td>{{ order.productid.productname }}</td>
-                <td>{{ order.sizeid.size }}</td>
-                <td>{{ order.colorid.colorName }}</td>
-                <td>{{ order.salesid_id }}</td>
-                <td>{{ order.priceid.amount }}</td>
-                <td>{{ order.quantity }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>    
-</div>
+<main class="flex-grow-1 overflow-auto p-4 p-md-5"> 
+    <div class="container">
+        <h2 class="mb-4 text-center">Ordered Items</h2>
+        
+        <table class="table table-dark table-striped table-bordered table-hover text-center align-middle shadow-sm">
+            <thead>
+                <tr>
+                    <th class="text-light text-center fw-bold">Order ID</th>
+                    <th class="text-light text-center fw-bold">Product ID</th>
+                    <th class="text-light text-center fw-bold">Size ID</th>
+                    <th class="text-light text-center fw-bold">Color ID</th>
+                    <th class="text-light text-center fw-bold">Sales ID</th>
+                    <th class="text-light text-center fw-bold">Price ID</th>
+                    <th class="text-light text-center fw-bold">Quantity</th>
+                </tr>
+            </thead>
+            <tbody class="text-light">
+                {% for order in orders %}
+                <tr class="text-light">
+                    <td class="text-light text-center">{{ order.orderid }}</td>
+                    <td class="text-light">{{ order.productid.prodnameid.name }}</td>
+                    <td class="text-light">{{ order.sizeid.size }}</td>
+                    <td class="text-light">{{ order.productid.colorid.colorname }}</td>
+                    <td class="text-light">{{ order.salesid_id }}</td>
+                    <td class="text-light">{{ order.priceid.amount }}</td>
+                    <td class="text-light">{{ order.quantity }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>    
+    </div>
+</main>
 
 {% endblock %}

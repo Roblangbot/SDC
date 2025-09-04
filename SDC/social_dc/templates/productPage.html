@@ -1,128 +1,142 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %} {{ product.productname }} {% endblock %}
-{% block content %}
+{% block title %}{{ product.productname }}{% endblock %}
 
+{% block content %}
 <div class="container py-5">
-    <!-- Product Name -->
+    <!-- Product Title -->
     <div class="row mb-4">
         <div class="col text-center">
             <h1 class="display-5 fw-bold">{{ product.productname }}</h1>
         </div>
     </div>
 
-    <!-- Product Info -->
-    <div class="row">
-        <!-- Default Image -->
-        <form method="post" action="{% url 'add_to_cart' product.productid %}">
-            {% csrf_token %}
-            
-            <div class="container d-flex">
-                <div class="col-md-6 text-center">
-                    <div class="align-items-center d-flex">
-                        <img src="{{ product.productimage }}" alt="Default Product Image" class="img-fluid rounded shadow" width="900px">
-                    </div>
-                </div>
-                <div class="container">
-                    <div class="container-fluid">
-                        <h3 class="text-success mb-4">Price: PHP{{ price }}</h3>
-                    </div>
-                                <!-- Quantity -->
-                    <div class="container-fluid mb-3">
-                        <label for="quantity" class="form-label">Quantity:</label>
-                        <input type="number" name="quantity" id="quantity" min="1" value="1" class="form-control" required>
-                    </div>
-    
-                    <!-- Size Selection -->
-                    <div class="container-fluid">
-                        <h4 class="mb-3 mt-4">Available Sizes</h4>
-                    </div>
-                    <div class="container-fluid">
-                        <div class="row g-3 mb-3">
-                            {% for size in size_variants %}
-                                <div class="col-6 col-sm-4">
-                                    <label class="btn btn-outline-primary w-100">
-                                        <input type="radio" name="sizeID" value="{{ size.sizeid }}" required class="d-none">
-                                        {{ size.size }}
-                                    </label>
-                                </div>
-                            {% endfor %}
-                        </div>
+    <!-- Product Details -->
+    <form method="post" id="addToCartForm" action="{% url 'add_to_cart' %}">
 
-                        <!-- Color Selection -->
-                        <h4 class="mb-3">Available Colors</h4>
-                        <div class="row g-3 mb-3">
-                            {% for color in color_variants %}
-                                <div class="col-6 col-sm-4">
-                                    <label class="btn btn-outline-secondary w-100">
-                                        <input type="radio" name="colorID" value="{{ color.id }}" data-image="{{ color.image_url }}" required class="d-none" {% if color.name == 'Black' %}checked{% endif %}>
-                                        <img src="{{ color.image_url }}" class="card-img-top" alt="{{ color.name }} Image">
-                                    </label>
-                                </div>
-                            {% endfor %}
-                        </div>
-                        <input type="hidden" name="imageURL" id="selectedImageURL">                        
-                    </div>
-                </div>
+        {% csrf_token %}
+        <div class="row g-5">
+            <!-- Product Image -->
+            <div class="col-md-6 text-center">
+                <img id="mainProductImage"
+                     src="{{ product.productimage }}"
+                     alt="Product Image"
+                     class="img-fluid rounded shadow"
+                     style="max-width: 100%; height: auto;">
             </div>
-        
 
-        
-            <button type="submit" class="btn btn-success">Add to Cart</button>
-        </form>       
-    </div>
+            <!-- Options and Purchase -->
+            <div class="col-md-6">
+                <h3 class="text-success mb-4">Price: PHP {{ price }}</h3>
+
+                <!-- Quantity -->
+                <div class="mb-4">
+                    <label for="quantity" class="form-label">Quantity</label>
+                    <input type="number" name="quantity" id="quantity" min="1" value="1" class="form-control" required>
+                </div>
+
+                <!-- Size Options -->
+                <div class="mb-4">
+                    <h5>Available Sizes</h5>
+                    <div class="row g-2">
+                        {% for size in size_variants %}
+                            <div class="col-6 col-sm-4">
+                                <label class="btn btn-outline-primary w-100">
+                                    <input type="radio"
+                                           name="sizeID"
+                                           value="{{ size.sizeid }}"
+                                           class="d-none"
+                                           required>
+                                    {{ size.size }}
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Color Options -->
+                <div class="mb-4">
+                    <h5>Available Colors</h5>
+                    <div class="row g-2">
+                        {% for variant in color_variants_data %}
+                            <div class="col-6 col-sm-4">
+                                <label class="btn btn-outline-secondary w-100">
+                                    <input type="radio"
+                                           name="productID"
+                                           value="{{ variant.id }}"
+                                           data-image="{{ variant.image }}"
+                                           class="d-none"
+                                           {% if forloop.first %}checked{% endif %}>
+                                    <img src="{{ variant.image }}"
+                                         alt="{{ variant.color }} Image"
+                                         class="img-fluid rounded">
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Hidden Inputs -->
+                <input type="hidden" name="imageURL" id="selectedImageURL" value="{{ product.productimage }}">
+                <input type="hidden" id="selectedProductID" value="{{ product.productid }}">
+
+                <!-- Submit -->
+                <button type="submit" class="btn btn-success w-100 mt-3">Add to Cart</button>
+            </div>
+        </div>
+    </form>
 </div>
 
+<!-- JavaScript -->
 <script>
-    // Add active class on page load to pre-selected radio
-    window.addEventListener('DOMContentLoaded', () => {
-        const selectedSize = document.querySelector('input[name="sizeID"]:checked');
-        const selectedColor = document.querySelector('input[name="colorID"]:checked');
-  
-        // Add active class to the selected size and color on page load
-        if (selectedSize) selectedSize.closest('label').classList.add('active');
-        if (selectedColor) selectedColor.closest('label').classList.add('active');
-    });
-  
-    // Size selection event handler
-    document.querySelectorAll('input[name="sizeID"]').forEach(radio => {
-        radio.addEventListener('change', function () {
-            document.querySelectorAll('input[name="sizeID"]').forEach(r => {
-                r.closest('label').classList.remove('active');  // Remove active from all sizes
-            });
-            this.closest('label').classList.add('active');  // Add active to the selected size
-        });
-    });
-  
-    // Color selection event handler
-    document.querySelectorAll('input[name="colorID"]').forEach(radio => {
-        radio.addEventListener('change', function () {
-            document.querySelectorAll('input[name="colorID"]').forEach(r => {
-                r.closest('label').classList.remove('active');  // Remove active from all colors
-            });
-            this.closest('label').classList.add('active');  // Add active to the selected color
-        });
-    });
     document.addEventListener('DOMContentLoaded', function () {
-        const radios = document.querySelectorAll('input[name="colorID"]');
-        const hiddenInput = document.getElementById('selectedImageURL');
+        const productRadios = document.querySelectorAll('input[name="productID"]');
+        const sizeRadios = document.querySelectorAll('input[name="sizeID"]');
+        const hiddenImage = document.getElementById('selectedImageURL');
+        const hiddenProduct = document.getElementById('selectedProductID');
+        const mainImage = document.getElementById('mainProductImage');
 
-        function updateImageURL() {
-            const selected = document.querySelector('input[name="colorID"]:checked');
+        function updateActive(radioGroup) {
+            radioGroup.forEach(r => r.closest('label').classList.remove('active'));
+            const selected = document.querySelector(`input[name="${radioGroup[0].name}"]:checked`);
             if (selected) {
-                hiddenInput.value = selected.dataset.image;
+                selected.closest('label').classList.add('active');
             }
         }
 
-        // Set default on load
-        updateImageURL();
+        function updateVariantSelection() {
+            const selectedColor = document.querySelector('input[name="colorID"]:checked');
+            if (selectedColor) {
+                const newImage = selectedColor.dataset.image;
+                const newProductId = selectedColor.dataset.product;
 
-        // Update on selection
-        radios.forEach(radio => {
-            radio.addEventListener('change', updateImageURL);
+                hiddenImage.value = newImage;
+                hiddenProduct.value = newProductId;
+                mainImage.src = newImage;
+
+                // ⚠️ Update form action with correct productID
+                document.getElementById('addToCartForm').action = `/add-to-cart/${newProductId}/`;
+            }
+        }
+
+        // Initial state setup
+        if (productRadios.length) {
+            updateActive(productRadios);
+            updateVariantSelection();
+        }
+        if (sizeRadios.length) updateActive(sizeRadios);
+
+        // Event listeners
+        productRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                updateActive(productRadios);
+                updateVariantSelection();
+            });
+        });
+
+        sizeRadios.forEach(radio => {
+            radio.addEventListener('change', () => updateActive(sizeRadios));
         });
     });
-
 </script>
-
 {% endblock %}

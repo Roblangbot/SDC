@@ -78,7 +78,7 @@ WSGI_APPLICATION = 'SDC.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'sdc',  # Your database name
+        'NAME': 'sdcnew',  # Your database name
         'USER': 'root',   # Default MySQL user in XAMPP
         'PASSWORD': '',   # Default password in XAMPP (empty by default)
         'HOST': '127.0.0.1',  # Host is localhost

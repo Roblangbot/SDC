@@ -8,22 +8,10 @@
         alert(message);
     }
 </script>
+    <div class="container-fluid p-0">
+        <main class="flex-grow-1 overflow-auto p-4 p-md-5">
 
-<div class="container text-center">
-    <h2>VARIANT CREATION</h2>
-</div>
-
-{% if success_message %}
-<script>
-    showAlert("{{ success_message }}");
-</script>
-{% endif %}
-
-<h3>Add a T-Shirt Model with Color URLs</h3>
-<form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Save</button>
-</form>
+        </main>
+    </div>
 
 {% endblock %}

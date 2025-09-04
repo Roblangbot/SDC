@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Cart Debug Page</h1>
+    {% if cart_items %}
+        {% for item in cart_items %}
+            <div class="mb-3 border-bottom pb-2">
+                <strong>{{ item.product_name }}</strong><br>
+                Size: {{ item.size }}<br>
+                Color: {{ item.color }}<br>
+                Quantity: {{ item.quantity }}<br>
+                <span class="text-success">₱{{ item.price }}</span>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>Your cart is empty.</p>
+    {% endif %}
+</div>
+{% endblock %}

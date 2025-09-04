@@ -1,0 +1,254 @@
+{% extends 'adminBase.html' %}
+{% load static %}
+{% block title %} Admin Dashboard {% endblock %}
+{% block content %}
+    {% comment %} <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* bg-gray-900 equivalent */
+            color: #d1d5db; /* text-gray-200 equivalent */
+        }
+        .bg-dark-subtle {
+            background-color: #1f2937 !important; /* bg-gray-800 equivalent */
+        }
+        .bg-dark-prime {
+            background-color: #030712 !important; /* bg-gray-950 equivalent */
+        }
+        .text-custom-green {
+            color: #4ade80 !important; /* text-green-400 equivalent */
+        }
+        .text-custom-yellow {
+            color: #facc15 !important; /* text-yellow-400 equivalent */
+        }
+        .text-custom-purple {
+            color: #a855f7 !important; /* text-purple-400 equivalent */
+        }
+        .text-custom-red {
+            color: #f87171 !important; /* text-red-400 equivalent */
+        }
+        .text-custom-indigo {
+            color: #818cf8 !important; /* text-indigo-400 equivalent */
+        }
+        .hover-bg-dark:hover {
+            background-color: #1f2937 !important; /* hover:bg-gray-800 equivalent */
+        }
+        .border-gray {
+            border-color: #374151 !important; /* border-gray-700 equivalent */
+        }
+        /* Custom scrollbar styling for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+    </style> {% endcomment %}
+
+    <!-- Main application container with a flexible layout -->
+    <div class="d-flex vh-100 overflow-hidden">
+
+        <!-- Main content area -->
+        <main class="flex-grow-1 overflow-auto p-4 p-md-5">
+
+            <!-- Key Metrics Section -->
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4 mb-4">
+                <!-- Card 1: Total Sales -->
+                <div class="col">
+                    <div class="card bg-dark-subtle border-0 rounded-4 shadow-lg h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h3 class="fs-5 fw-semibold text-secondary">Total Sales</h3>
+                                <svg class="text-custom-green" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8h.01M12 12h.01M12 16h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <p class="display-5 fw-bold text-light mb-2">₱NaN</p>
+                            <p class="card-text text-sm text-custom-green">+NaN% from last month</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: New Orders -->
+                <div class="col">
+                    <div class="card bg-dark-subtle border-0 rounded-4 shadow-lg h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h3 class="fs-5 fw-semibold text-secondary">New Orders</h3>
+                                <svg class="text-custom-yellow" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M17 12h.01"></path>
+                                </svg>
+                            </div>
+                            <p class="display-5 fw-bold text-light mb-2">NaN</p>
+                            <p class="card-text text-sm text-custom-yellow">+NaN% from last week</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Total Customers -->
+                <div class="col">
+                    <div class="card bg-dark-subtle border-0 rounded-4 shadow-lg h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h3 class="fs-5 fw-semibold text-secondary">Total Customers</h3>
+                                <svg class="text-custom-purple" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h-1a2 2 0 01-2-2v-4a2 2 0 012-2h4a2 2 0 012 2v4a2 2 0 01-2 2h-1M12 20h-1a2 2 0 01-2-2v-4a2 2 0 012-2h4a2 2 0 012 2v4a2 2 0 01-2 2h-1"></path>
+                                </svg>
+                            </div>
+                            <p class="display-5 fw-bold text-light mb-2">NaN</p>
+                            <p class="card-text text-sm text-custom-purple">+NaN% from last month</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Low Stock Items -->
+                <div class="col">
+                    <div class="card bg-dark-subtle border-0 rounded-4 shadow-lg h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h3 class="fs-5 fw-semibold text-secondary">Low Stock Items</h3>
+                                <svg class="text-custom-red" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            <p class="display-5 fw-bold text-light mb-2">NaN</p>
+                            <p class="card-text text-sm text-custom-red">Action needed</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Area: Charts & Recent Activity -->
+            <div class="row g-4 mb-4">
+                <!-- Sales Chart -->
+                <div class="col-lg-8">
+                    <div class="card bg-dark-subtle border-0 rounded-4 shadow-lg h-100">
+                        <div class="card-body p-4">
+                            <h3 class="fs-4 fw-semibold text-light mb-3">Sales Over Time</h3>
+                            <!-- Placeholder for a chart -->
+                            <div class="bg-dark border rounded-3 d-flex align-items-center justify-content-center" style="height: 320px;">
+                                <span class="text-secondary fs-5">Placeholder Chart</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Orders -->
+                <div class="col-lg-4">
+                    <div class="card bg-dark-subtle border-0 rounded-4 shadow-lg h-100">
+                        <div class="card-body p-4">
+                            <h3 class="fs-4 fw-semibold text-light mb-3">Recent Orders</h3>
+                            <ul class="list-unstyled mb-0">
+                                <li class="d-flex align-items-center p-2 mb-3 rounded-2">
+                                    <img src="https://placehold.co/40x40/1f2937/ffffff?text=P1" alt="Order Product" class="rounded me-3">
+                                    <div class="flex-grow-1">
+                                        <p class="fw-medium text-light mb-0">#1024 - Blue Retro T-Shirt</p>
+                                        <p class="text-sm text-secondary mb-0">by Jane Doe - 2 hours ago</p>
+                                    </div>
+                                    <span class="fw-bold text-custom-indigo">₱NaN</span>
+                                </li>
+                                <li class="d-flex align-items-center p-2 mb-3 rounded-2">
+                                    <img src="https://placehold.co/40x40/1f2937/ffffff?text=P2" alt="Order Product" class="rounded me-3">
+                                    <div class="flex-grow-1">
+                                        <p class="fw-medium text-light mb-0">#NaN - Mountain Vibe T-Shirt</p>
+                                        <p class="text-sm text-secondary mb-0">by John Smith - 1 day ago</p>
+                                    </div>
+                                    <span class="fw-bold text-custom-indigo">₱NaN</span>
+                                </li>
+                                <li class="d-flex align-items-center p-2 mb-3 rounded-2">
+                                    <img src="https://placehold.co/40x40/1f2937/ffffff?text=P3" alt="Order Product" class="rounded me-3">
+                                    <div class="flex-grow-1">
+                                        <p class="fw-medium text-light mb-0">#NaN - Minimalist T-Shirt</p>
+                                        <p class="text-sm text-secondary mb-0">by Bob Johnson - 2 days ago</p>
+                                    </div>
+                                    <span class="fw-bold text-custom-indigo">₱NaN</span>
+                                </li>
+                                <li class="d-flex align-items-center p-2 rounded-2">
+                                    <img src="https://placehold.co/40x40/1f2937/ffffff?text=P4" alt="Order Product" class="rounded me-3">
+                                    <div class="flex-grow-1">
+                                        <p class="fw-medium text-light mb-0">#NaN - Custom Print T-Shirt</p>
+                                        <p class="text-sm text-secondary mb-0">by Emily Davis - 3 days ago</p>
+                                    </div>
+                                    <span class="fw-bold text-custom-indigo">₱NaN</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Table -->
+            <div class="card bg-dark-subtle border-0 rounded-4 shadow-lg">
+                <div class="card-body p-4">
+                    <h3 class="fs-4 fw-semibold text-light mb-3">Top Selling Products</h3>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-borderless text-light mb-0">
+                            <thead>
+                                <tr class="text-secondary text-uppercase small">
+                                    <th scope="col" class="py-3 px-4 fw-medium">Product</th>
+                                    <th scope="col" class="py-3 px-4 fw-medium">Stock</th>
+                                    <th scope="col" class="py-3 px-4 fw-medium">Price</th>
+                                    <th scope="col" class="py-3 px-4 fw-medium">Status</th>
+                                    <th scope="col" class="py-3 px-4 fw-medium">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-bottom border-secondary-subtle">
+                                    <td class="py-3 px-4 d-flex align-items-center gap-3">
+                                        <img src="https://placehold.co/40x40/1f2937/ffffff?text=TS1" alt="Product Image" class="rounded">
+                                        <span>Classic White T-Shirt</span>
+                                    </td>
+                                    <td class="py-3 px-4 text-custom-green">NaN in stock</td>
+                                    <td class="py-3 px-4">₱NaN</td>
+                                    <td class="py-3 px-4">
+                                        <span class="badge rounded-pill text-bg-success">Active</span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <button class="btn btn-link text-custom-indigo text-decoration-none p-0">Edit</button>
+                                    </td>
+                                </tr>
+                                <tr class="border-bottom border-secondary-subtle">
+                                    <td class="py-3 px-4 d-flex align-items-center gap-3">
+                                        <img src="https://placehold.co/40x40/1f2937/ffffff?text=TS2" alt="Product Image" class="rounded">
+                                        <span>"Space Explorer" T-Shirt</span>
+                                    </td>
+                                    <td class="py-3 px-4 text-custom-yellow">NaN in stock</td>
+                                    <td class="py-3 px-4">₱NaN</td>
+                                    <td class="py-3 px-4">
+                                        <span class="badge rounded-pill text-bg-warning">Low Stock</span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <button class="btn btn-link text-custom-indigo text-decoration-none p-0">Edit</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 d-flex align-items-center gap-3">
+                                        <img src="https://placehold.co/40x40/1f2937/ffffff?text=TS3" alt="Product Image" class="rounded">
+                                        <span>Vintage Logo T-Shirt</span>
+                                    </td>
+                                    <td class="py-3 px-4 text-custom-red">NaN in stock</td>
+                                    <td class="py-3 px-4">₱NaN</td>
+                                    <td class="py-3 px-4">
+                                        <span class="badge rounded-pill text-bg-danger">Out of Stock</span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <button class="btn btn-link text-custom-indigo text-decoration-none p-0">Edit</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+
+{% endblock %}

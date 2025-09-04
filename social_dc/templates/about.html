@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} About Us {% endblock %} 
+{% block content %}
+    
+  <div class="container d-flex align-items-center my-5">
+    <div class="abouttext">
+      <div class="container mb-5">
+        <div class="text-center mb-2 p-3 text-uppercase fs-2 title">
+          Established Since: 
+        </div>
+        <div class="">
+          <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Deleniti, sequi neque molestias itaque, id expedita temporibus similique ex dignissimos dolor exercitationem? Aliquid reprehenderit asperiores iste maxime rem quaerat deleniti architecto.</p>
+        </div>
+      </div>
+      <div class="container mb-5">
+        <div class="text-center mb-2 p-3 text-uppercase fs-2 title">
+            Behind The Logo:
+        </div>
+        <div>
+          <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Deleniti, sequi neque molestias itaque, id expedita temporibus similique ex dignissimos dolor exercitationem? Aliquid reprehenderit asperiores iste maxime rem quaerat deleniti architecto.</p>
+        </div>
+      </div>
+      <div class="container mb-5">
+        <div class="text-center mb-2 p-3 text-uppercase fs-2 title">
+            How Did It Start:
+        </div>
+        <div>
+          <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Deleniti, sequi neque molestias itaque, id expedita temporibus similique ex dignissimos dolor exercitationem? Aliquid reprehenderit asperiores iste maxime rem quaerat deleniti architecto.</p>
+        </div>
+      </div>
+    </div>
+    <div class="mx-5">
+      <div class="aboutus-Model me-5">
+        <div class="me-5">
+          <img src="{% static 'images/Model1.jpg' %}" alt="" style="z-index: 1;">
+        </div>
+        <div class="me-5">
+          <img src="{% static 'images/Model2.jpg' %}" alt="" style="z-index: 0;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endblock %} 

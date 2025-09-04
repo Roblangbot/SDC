@@ -1,0 +1,218 @@
+:root{
+    --main-color: #fff;
+    --text-color-main: rgb(0, 0, 0);
+    --navbar: #ffffff;
+    --accent-color: #0d6efd;
+    --orange: #c97405;
+}
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.navbar{
+    background-color: var(--navbar);
+    color: var(--text-color-main);
+}
+
+.title{
+    background-color: var(--navbar);
+    color: var(--text-color-main);
+    border-radius: 20px;
+    font-weight: 900;
+}
+
+.sdcLogo{
+    width: 75px !important;
+}
+
+.video-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    z-index: -1;
+}
+
+.hero-section {
+    position: relative;
+    height: 100vh;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.5); /* Optional: semi-transparent overlay */
+}
+
+.btn-orange{
+    background-color: var(--orange);
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.15); /* Overlay to increase text readability */
+    z-index: 1;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+}
+
+body{
+    background-color: var(--main-color);
+}
+.container-homeContent{
+    display: flex;
+}
+.item-container{
+    margin: auto;
+    display: flex;
+    text-align: center;
+}
+.container-item-image{
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
+.bestSeller-title{
+    display: block;
+    width: 100%;
+    margin: 50px auto 50px auto;
+    text-align: center;
+}
+
+.info{
+    display: flex;
+}
+footer{
+    background-color: var(--navbar);
+    color: var(--main-color) !important;
+}
+.companyInfo-Button{
+    display: block;
+    justify-items: center;
+}
+.socialMedia-Log{
+    display: flex;
+}
+
+.companyInfo-Section{
+    margin: auto;
+    color: var(--text-color-main) !important;
+}
+
+.hover-white:hover {
+    color: rgb(77, 69, 69) !important;
+}
+.hover-blue:hover {
+    color: var(--accent-color) !important;
+    -webkit-text-stroke: var(--text-color-main) .5px;
+}
+
+.logo{
+    color: var(--text-color-main);
+}
+
+.logo > img{
+    width: 100px;
+}
+
+.marquee {
+    overflow: hidden;
+    white-space: nowrap;
+    box-sizing: border-box;
+    width: 100%;
+    background-color: black;
+}
+  
+.marquee h2 {
+    display: inline-block;
+    padding-left: 100%;
+    animation: marquee 50s linear infinite;
+}
+
+@keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+
+.marquee-link {
+    color: var(--main-color);
+    text-decoration: none;
+    transition: color 0.5s ease;
+}
+
+.marquee-link:hover {
+    color: white;
+}  
+
+.item{
+    width: 320px;
+    height: 280px;
+}
+
+.aboutus-Model > div > img {
+    width: 250px;
+}
+
+.socialMedia-Text{
+    color: black;
+  }
+
+.footerLogo{
+    width: 40px;
+}
+
+/* ADMIN */
+.nav-item > a {
+    margin: 0 10px 0 10px;
+}
+
+.image-option img {
+    border: 5px solid transparent;
+    transition: border 0.2s ease;
+}
+
+.image-option img:hover {
+    border: 10px solid #6c757d;      
+}
+
+.abouttext{
+    margin: 0 50px 0 50px;
+}
+
+.image-option img.selected {
+    border: 10px solid #0d6efd;
+}
+
+abel.active {
+    border: 2px solid #198754; /* Bootstrap success color */
+    background-color: #e9f8ef;
+  }
+
+
+input{
+    width: 500px;
+}
+
+table, th, td{
+    border: 5px solid grey !important;
+}
+
+.quantityUpdate {
+  -webkit-appearance: none;
+}
+
+/* Hide arrows in Firefox */
+.quantityUpdate {
+  -moz-appearance: textfield;
+}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Contacts {% endblock %} 
+{% block content %}
+
+    <div class="container">
+        <div class="container p-5">
+            <h2 class="p-2 text-center fw-bold">CONTACTS US</h2>
+        </div>
+        <div class="container-fluid d-flex mb-5">
+            <div class="container">
+                <form method="POST" action="{% url 'contacts' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="FormControlInput1" class="form-label">Email address:</label>
+                        <input type="email" name="email" class="form-control" id="FormControlInput1" placeholder="name@example.com" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="exampleFormControlTextarea1" class="form-label">Email Us:</label>
+                        <textarea class="form-control" name="message" id="exampleFormControlTextarea1" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-warning">Submit</button>
+                </form>
+            </div>
+            <div class="container text-center fw-semibold">
+                <div class="mx-auto">
+                    <div>Address: Divisoria 999 Mall 2 ( Pasilio 2D-12 )</div>
+                    <div>Phone: 0916 279 0210</div>
+                    <div>Email: socialdistrictclothing@gmail.com</div>
+                    <div id="map" style="height: 400px; width: 100%; border: 1px solid #ddd;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

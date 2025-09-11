@@ -246,6 +246,9 @@ class ProductTable(models.Model):
     class Meta:
         managed = False
         db_table = 'product_table'
+    
+    def __str__(self):
+        return f"{self.prodnameid} - {self.colorid} - ${self.priceid}"
 
 
 class SalesTable(models.Model):

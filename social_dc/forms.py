@@ -16,6 +16,8 @@ class ProductForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
 
+    productimage = forms.CharField(required=True)
+
     class Meta:
         model = ProductTable
         fields = ['prodnameid', 'colorid', 'priceid', 'productimage']

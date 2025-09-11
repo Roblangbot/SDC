@@ -274,7 +274,17 @@ def add_to_cart(request):
         request.session['cart'] = cart
         request.session.modified = True
 
-        return redirect('productPage', productID=product.productid)
+                # Count the total number of items in the cart (sum of quantities)
+        total_item_count = sum(int(item['quantity']) for item in cart)
+        
+        # Option 1: Store the total count in the session
+        request.session['total_item_count'] = total_item_count
+
+        # Option 2: Store the total count in a cookie (e.g., for cross-session tracking)
+        response = redirect('productPage', productID=product.productid)
+        response.set_cookie('item_count', total_item_count, max_age=3600)  # expires in 1 hour
+
+        return response
 
     return HttpResponseBadRequest("Invalid method.")
 
@@ -331,20 +341,45 @@ def adminDashboard(request):
 @login_required(login_url='adminLogin')
 def addProduct(request):
     if request.method == 'POST':
-        product_form = ProductForm(request.POST)
+        # Create or Edit Product
+        product_form = ProductForm(request.POST, request.FILES)
+        product_id = request.POST.get('productid')
 
-        if product_form.is_valid():
-            product_form.save()
-            return redirect('addProduct')
+        if product_id:  # Editing an existing product
+            product = get_object_or_404(ProductTable, productid=product_id)
+            product_form = ProductForm(request.POST, request.FILES, instance=product)
+            if product_form.is_valid():
+                product_form.save()
+                return redirect('addProduct')  # Redirect after saving
+        elif 'delete' in request.POST:  # Deleting a product
+            product_id = request.POST.get('delete')
+            product = get_object_or_404(ProductTable, productid=product_id)
+            product.delete()
+            return redirect('addProduct')  # Redirect after deletion
+        else:  # Creating a new product
+            if product_form.is_valid():
+                product_form.save()
+                return redirect('addProduct')  # Redirect after saving
+
     else:
         product_form = ProductForm()
 
     products = ProductTable.objects.all()
 
     context = {
-        'products' : products,
-        'product_form': product_form
+        'product_form': product_form,
+        'products': products,
+        'edit_mode': False,  # Default is not in edit mode
     }
+
+    # Check if we are editing a product
+    product_id = request.GET.get('edit')  # Check URL for 'edit' parameter
+    if product_id:
+        product = get_object_or_404(ProductTable, productid=product_id)
+        product_form = ProductForm(instance=product)
+        context['product_form'] = product_form
+        context['edit_mode'] = True  # Now we're in edit mode
+        context['product_id'] = product_id  # Pass product ID to the template
 
     return render(request, 'addProduct.html', context)
 

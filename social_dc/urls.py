@@ -16,11 +16,16 @@ urlpatterns = [
     path('orderedItems/', views.orderedItems, name="orderedItems"),
     path('paymentAssessment/', views.paymentAss, name="paymentAss"),
     path('salesMonitoring/', views.salesMonitor, name="salesMonitor"),
-    path('addProduct/', views.addProduct, name="addProduct"),
     path('variantCreation/', views.variantCreation, name="variantCreation"),
     path('analysis/', views.analysis, name="analysis"),
+
+    # CART FUNCTIONS
     path('add-to-cart/', views.add_to_cart, name='add_to_cart'),
     path('update-cart/<int:product_id>/<str:size>/', views.update_cart_quantity, name='update_cart_quantity'),
     path('remove-from-cart/<int:product_id>/<str:size>/', views.remove_from_cart, name='remove_from_cart'),
+
+    # ADD PRODUCT
+    path('adminProduct/', views.addProduct, name="addProduct"),
+
     path('adminDashboard/', views.adminDashboard, name='adminDashboard'),
 ]

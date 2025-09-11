@@ -35,7 +35,7 @@
               <span class="navbar-toggler-icon"></span>
           </button>
           <div class="collapse navbar-collapse" id="navbarNavDropdown">
-              <ul class="navbar-nav ms-auto">
+              <ul class="navbar-nav ms-auto d-flex align-items-center">
                 <li class="nav-item">
                     <a class="nav-link" aria-current="page" href="{% url "aboutus" %}">About Us</a>
                 </li>
@@ -50,7 +50,10 @@
                 </li>
                 <li class="nav-item">
                   <a class="nav-link" href="#" data-bs-toggle="offcanvas" data-bs-target="#cartSidebar" aria-controls="cartSidebar">
-                    Cart
+                    <div>
+                      <div class="itemCountCart text-center ">{{ total_item_count }}</div>
+                      <img class="cartImg" src="{% static 'images/cart.svg' %}" alt="cart">
+                    </div>
                   </a>
                 </li>
               </ul>

@@ -10,12 +10,13 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponseBadRequest, HttpResponseNotFound, JsonResponse, HttpResponseRedirect
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Avg
 from django.db.models.functions import TruncMonth, TruncDay
 from django.utils import timezone
 from .models import (ProductTable, PriceTable, SizeTable, ColorTable, OrderTable, SalesTable, ProdNameTable)
 from .forms import ProductForm
 from .utils import enrich_cart
+import statistics
 from django.core.paginator import Paginator
 
 
@@ -284,8 +285,9 @@ def add_to_cart(request):
         response = redirect('productPage', productID=product.productid)
         response.set_cookie('item_count', total_item_count, max_age=3600)  # expires in 1 hour
 
+        messages.success(request, "Item successfully added to cart!")
         return response
-
+    
     return HttpResponseBadRequest("Invalid method.")
 
 
@@ -416,91 +418,98 @@ def variantCreation(request):
 # DATA ANALYSIS
 @login_required(login_url='adminLogin')
 def salesMonitor(request):
-    # # Filter April to May 2023
-    # start_date = date(2023, 4, 1)
-    # end_date = date(2023, 5, 31)
+    # Filter April to May 2023 — you can later generalize this to be dynamic
+    start_date = date(2023, 4, 1)
+    end_date = date(2023, 5, 31)
 
-    # # Filter order records through sales date
-    # orders_apr_may = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))
-    # sales_apr_may = SalesTable.objects.filter(sales_date__range=(start_date, end_date))
+    # Filter orders and sales within date range
+    orders = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))
+    sales = SalesTable.objects.filter(sales_date__range=(start_date, end_date))
 
-    # # Most Bought Color
-    # color_data = orders_apr_may.values('colorid__colorName') \
-    #     .annotate(total=Sum('quantity')).order_by('-total')
+    # ========== SALES TRENDS ========== #
+    sales_timeframe = request.GET.get('timeframe', 'month')
 
-    # # Most Bought Design (Product)
-    # design_data = orders_apr_may.values('productid__productname') \
-    #     .annotate(total=Sum('quantity')).order_by('-total')
+    if sales_timeframe == 'day':
+        sales_data = sales.annotate(day=TruncDay('sales_date')) \
+                          .values('day').annotate(total=Count('salesid')).order_by('day')
+        timeframe_labels = [s['day'].strftime('%d %b') for s in sales_data]
+    else:
+        sales_data = sales.annotate(month=TruncMonth('sales_date')) \
+                          .values('month').annotate(total=Count('salesid')).order_by('month')
+        timeframe_labels = [s['month'].strftime('%b').upper() for s in sales_data]
 
-    # # Most Bought Size
-    # size_data = orders_apr_may.values('sizeid__size') \
-    #     .annotate(total=Sum('quantity')).order_by('-total')
+    # ========== MOST BOUGHT ANALYTICS ========== #
+    color_data = orders.values('productid__colorid__colorname') \
+                       .annotate(total=Sum('quantity')).order_by('-total')
 
-    # # Most Bought Product + Color Combo
-    # combo_data = orders_apr_may.values('productid__productname', 'colorid__colorName') \
-    #     .annotate(total=Sum('quantity')).order_by('-total')
+    design_data = orders.values('productid__prodnameid__name') \
+                        .annotate(total=Sum('quantity')).order_by('-total')
 
-    # # Get daily or monthly sales based on the request
-    # sales_timeframe = request.GET.get('timeframe', 'month')  # Default to 'month'
+    size_data = orders.values('sizeid__size') \
+                      .annotate(total=Sum('quantity')).order_by('-total')
 
-    # if sales_timeframe == 'day':
-    #     # Group by day if 'day' is selected
-    #     sales_data = sales_apr_may.annotate(day=TruncDay('sales_date')) \
-    #         .values('day').annotate(total=Count('salesid')).order_by('day')
-    #     timeframe_labels = [s['day'].strftime('%d %b') for s in sales_data]  # Display as "Day Month"
-    # else:
-    #     # Group by month if 'month' is selected
-    #     sales_data = sales_apr_may.annotate(month=TruncMonth('sales_date')) \
-    #         .values('month').annotate(total=Count('salesid')).order_by('month')
-    #     timeframe_labels = [s['month'].strftime('%b').upper() for s in sales_data]  # Display as "Month"
+    combo_data = orders.values('productid__prodnameid__name', 'productid__colorid__colorname') \
+                       .annotate(total=Sum('quantity')).order_by('-total')
 
-    # # Context for displaying sales data
-    # context = {
-    #     'color_labels': [c['colorid__colorName'] for c in color_data],
-    #     'color_totals': [c['total'] for c in color_data],
+    # ========== AVERAGE ORDER VALUE (AOV) ========== #
+    aov = sales.aggregate(avg_order=Avg('total_price'))['avg_order'] or 0
 
-    #     'design_labels': [d['productid__productname'] for d in design_data],
-    #     'design_totals': [d['total'] for d in design_data],
+    # ========== CUSTOMER LIFETIME VALUE (CLTV) ========== #
+    cltv_data = sales.values('customerid__name') \
+                     .annotate(cltv=Sum('total_price')) \
+                     .order_by('-cltv')[:5]  # top 5 customers
 
-    #     'size_labels': [s['sizeid__size'] for s in size_data],
-    #     'size_totals': [s['total'] for s in size_data],
+    cltv_labels = [entry['customerid__name'] for entry in cltv_data]
+    cltv_totals = [entry['cltv'] for entry in cltv_data]
 
-    #     'combo_labels': [f"{c['productid__productname']}/{c['colorid__colorName']}" for c in combo_data[:5]],
-    #     'combo_totals': [c['total'] for c in combo_data[:5]],
+    # ========== SALES TREND ANALYSIS ========== #
+    linearx = np.arange(len(sales_data)).reshape(-1, 1)
+    lineary = np.array([s['total'] for s in sales_data])
+    trend = None
 
-    #     'sales_labels': timeframe_labels,
-    #     'sales_totals': [s['total'] for s in sales_data],
-    # }
+    if len(linearx) >= 2:
+        model = LinearRegression().fit(linearx, lineary)
+        slope = model.coef_[0]
+        if slope > 0:
+            trend = "Increasing trend"
+        elif slope < 0:
+            trend = "Decreasing trend"
+        else:
+            trend = "Stable sales"
 
-    # # Convert dates to numerical values for regression
-    # linearx = np.arange(len(sales_data)).reshape(-1, 1)
-    # lineary = np.array([s['total'] for s in sales_data])
+    # ========== OUTLIER DETECTION ========== #
+    sales_values = list(lineary)
+    outliers = []
 
-    # # Only run if enough data points
-    # trend = None
-    # if len(linearx) >= 2:
-    #     model = LinearRegression().fit(linearx, lineary)
-    #     slope = model.coef_[0]
-    #     if slope > 0:
-    #         trend = "Increasing trend"
-    #     elif slope < 0:
-    #         trend = "Decreasing trend"
-    #     else:
-    #         trend = "Stable sales"
+    if len(sales_values) >= 2:
+        mean = statistics.mean(sales_values)
+        stdev = statistics.stdev(sales_values)
+        outliers = [timeframe_labels[i] for i, val in enumerate(sales_values)
+                    if abs(val - mean) > 2 * stdev]
 
-    # # Add to context
-    # context['sales_trend'] = trend
+    # ========== CONTEXT FOR TEMPLATE ========== #
+    context = {
+        'color_labels': [c['productid__colorid__colorname'] for c in color_data],
+        'color_totals': [c['total'] for c in color_data],
 
-    # sales_values = [s['total'] for s in sales_data]
-    # if len(sales_values) >= 2:
-    #     mean = statistics.mean(sales_values)
-    #     stdev = statistics.stdev(sales_values)
-    #     outliers = [label for i, label in enumerate(timeframe_labels)
-    #                 if abs(sales_values[i] - mean) > 2 * stdev]
+        'design_labels': [d['productid__prodnameid__name'] for d in design_data],
+        'design_totals': [d['total'] for d in design_data],
 
-    #     context['outlier_periods'] = outliers
+        'size_labels': [s['sizeid__size'] for s in size_data],
+        'size_totals': [s['total'] for s in size_data],
 
+        'combo_labels': [f"{c['productid__prodnameid__name']}/{c['productid__colorid__colorname']}" for c in combo_data[:5]],
+        'combo_totals': [c['total'] for c in combo_data[:5]],
 
-    return render(request, 'salesMonitor.html', 
-                #   context
-                  )
+        'sales_labels': timeframe_labels,
+        'sales_totals': list(lineary),
+
+        'average_order_value': round(aov, 2),
+        'cltv_labels': cltv_labels,
+        'cltv_totals': cltv_totals,
+
+        'sales_trend': trend,
+        'outlier_periods': outliers,
+    }
+
+    return render(request, 'salesMonitor.html', context)

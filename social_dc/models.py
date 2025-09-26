@@ -77,6 +77,26 @@ class AuthUserUserPermissions(models.Model):
         unique_together = (('user', 'permission'),)
 
 
+class BarangayTable(models.Model):
+    barangayid = models.AutoField(db_column='barangayID', primary_key=True)  # Field name made lowercase.
+    barangay_name = models.CharField(max_length=255)
+    cityid = models.ForeignKey('CityMunicipalityTable', models.DO_NOTHING, db_column='cityID', blank=True, null=True)  # Field name made lowercase.
+
+    class Meta:
+        managed = False
+        db_table = 'barangay_table'
+
+
+class CityMunicipalityTable(models.Model):
+    cityid = models.AutoField(db_column='cityID', primary_key=True)  # Field name made lowercase.
+    city_name = models.CharField(max_length=255)
+    provinceid = models.ForeignKey('ProvinceTable', models.DO_NOTHING, db_column='provinceID', blank=True, null=True)  # Field name made lowercase.
+
+    class Meta:
+        managed = False
+        db_table = 'city_municipality_table'
+
+
 class ColorTable(models.Model):
     colorid = models.AutoField(db_column='colorID', primary_key=True)  # Field name made lowercase.
     colorname = models.CharField(db_column='colorName', max_length=99)  # Field name made lowercase.
@@ -84,19 +104,33 @@ class ColorTable(models.Model):
     class Meta:
         managed = False
         db_table = 'color_table'
-
+    
     def __str__(self):
-        return self.colorname 
+        return self.colorname
+
+
+class CountryTable(models.Model):
+    countryid = models.AutoField(db_column='countryID', primary_key=True)  # Field name made lowercase.
+    country_name = models.CharField(max_length=999)
+
+    class Meta:
+        managed = False
+        db_table = 'country_table'
 
 
 class CustomerTable(models.Model):
     customerid = models.AutoField(db_column='CustomerID', primary_key=True)  # Field name made lowercase.
-    name = models.CharField(db_column='Name', max_length=45)  # Field name made lowercase.
-    contactno_field = models.CharField(db_column='ContactNo.', max_length=45)  # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
+    firstname = models.CharField(db_column='firstName', max_length=99)  # Field name made lowercase.
+    lastname = models.CharField(db_column='lastName', max_length=99)  # Field name made lowercase.
+    contactno = models.CharField(db_column='contactNo', max_length=45)  # Field name made lowercase.
+    email = models.CharField(max_length=999)
 
     class Meta:
         managed = False
         db_table = 'customer_table'
+
+    def __str__(self):
+        return f"{self.firstname} {self.lastname}"
 
 
 class DeliveryTable(models.Model):
@@ -192,6 +226,7 @@ class OrderTable(models.Model):
 
 class PaymentTable(models.Model):
     paymentid = models.AutoField(db_column='paymentID', primary_key=True)  # Field name made lowercase.
+    salesid = models.ForeignKey('SalesTable', models.DO_NOTHING, db_column='salesID')  # Field name made lowercase.
     paystatid = models.ForeignKey('PaystatTable', models.DO_NOTHING, db_column='paystatID')  # Field name made lowercase.
     mop = models.CharField(db_column='MOP', max_length=99)  # Field name made lowercase.
     date = models.DateField(db_column='Date')  # Field name made lowercase.
@@ -246,17 +281,62 @@ class ProductTable(models.Model):
     class Meta:
         managed = False
         db_table = 'product_table'
-    
+
     def __str__(self):
         return f"{self.prodnameid} - {self.colorid} - ${self.priceid}"
 
 
+class ProvinceTable(models.Model):
+    provinceid = models.AutoField(db_column='provinceID', primary_key=True)  # Field name made lowercase.
+    province_name = models.CharField(max_length=255)
+    regionid = models.ForeignKey('RegionTable', models.DO_NOTHING, db_column='regionID', blank=True, null=True)  # Field name made lowercase.
+
+    class Meta:
+        managed = False
+        db_table = 'province_table'
+
+
+class RegionTable(models.Model):
+    regionid = models.AutoField(db_column='regionID', primary_key=True)  # Field name made lowercase.
+    region_name = models.CharField(max_length=255)
+
+    class Meta:
+        managed = False
+        db_table = 'region_table'
+
+
+class SalesAddressTable(models.Model):
+    sales_addressid = models.AutoField(db_column='sales_addressID', primary_key=True)  # Field name made lowercase.
+    salesid = models.ForeignKey('SalesTable', models.DO_NOTHING, db_column='salesID')  # Field name made lowercase.
+    block_number = models.CharField(max_length=50, blank=True, null=True)
+    lot_number = models.CharField(max_length=50, blank=True, null=True)
+    house_number = models.CharField(max_length=50, blank=True, null=True)
+    unit_number = models.CharField(max_length=50, blank=True, null=True)
+    street_name = models.CharField(max_length=255, null=False, blank=False)
+    subdivision = models.CharField(max_length=255, blank=True, null=True)
+    barangayid = models.ForeignKey(BarangayTable, models.DO_NOTHING, db_column='barangayID')  # Field name made lowercase.
+    city_municipalityid = models.ForeignKey(CityMunicipalityTable, models.DO_NOTHING, db_column='city_municipalityID', blank=True, null=True)  # Field name made lowercase.
+    provinceid = models.ForeignKey(ProvinceTable, models.DO_NOTHING, db_column='provinceID', blank=True, null=True)  # Field name made lowercase.
+    regionid = models.ForeignKey(RegionTable, models.DO_NOTHING, db_column='regionID')  # Field name made lowercase.
+    countryid = models.ForeignKey(CountryTable, models.DO_NOTHING, db_column='countryID')  # Field name made lowercase.
+    postal_code = models.CharField(max_length=10, blank=True, null=True)
+    delivery_instructions = models.TextField(blank=True, null=True)
+    createdat = models.DateTimeField(db_column='createdAt')  # Field name made lowercase.
+
+    class Meta:
+        managed = True
+        db_table = 'sales_address_table'
+    
+    def __str__(self):
+        return f"{self.street_name}, {self.barangayid}"
+
+
 class SalesTable(models.Model):
     salesid = models.AutoField(db_column='salesID', primary_key=True)  # Field name made lowercase.
+    ordernumber = models.CharField(db_column='orderNumber', max_length=999)  # Field name made lowercase.
     customerid = models.ForeignKey(CustomerTable, models.DO_NOTHING, db_column='customerID')  # Field name made lowercase.
     total_price = models.IntegerField()
     itemstatusid = models.ForeignKey(ItemStatusTable, models.DO_NOTHING, db_column='itemStatusID')  # Field name made lowercase.
-    paymentid = models.ForeignKey(PaymentTable, models.DO_NOTHING, db_column='PaymentID')  # Field name made lowercase.
     sales_date = models.DateField(blank=True, null=True)
     sales_time = models.TimeField(blank=True, null=True)
 

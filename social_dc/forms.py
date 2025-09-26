@@ -1,6 +1,6 @@
 # forms.py
 from django import forms
-from .models import ProductTable, ColorTable, ProdNameTable, PriceTable
+from .models import ProductTable, ColorTable, ProdNameTable, PriceTable, CustomerTable, SalesAddressTable
 
 class ProductForm(forms.ModelForm):
     prodnameid = forms.ModelChoiceField(
@@ -21,3 +21,19 @@ class ProductForm(forms.ModelForm):
     class Meta:
         model = ProductTable
         fields = ['prodnameid', 'colorid', 'priceid', 'productimage']
+
+
+class CustomerForm(forms.ModelForm):
+    class Meta:
+        model = CustomerTable
+        fields = ['firstname', 'lastname', 'contactno', 'email']
+
+
+class AddressForm(forms.ModelForm):
+    class Meta:
+        model = SalesAddressTable
+        fields = [
+            'block_number', 'lot_number', 'house_number', 'unit_number',
+            'street_name', 'subdivision', 'barangayid', 'postal_code', 'city_municipalityid',
+            'provinceid', 'regionid', 'countryid', 'delivery_instructions'
+        ]

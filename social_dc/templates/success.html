@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %} Order Success - SDC {% endblock %} 
+{% block content %}
+
+<div class="container-fluid">
+    <div class="container">
+        <p>THANK YOU FOR ORDERING IN OUR SHOP</p>
+    </div>
+    <div class="container">
+        <a href="{% url "home" %}">Go Back to Homepage</a>
+    </div>
+</div>
+
+{% endblock %}

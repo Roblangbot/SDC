@@ -13,7 +13,7 @@ from django.http import HttpResponseBadRequest, HttpResponseNotFound, JsonRespon
 from django.db.models import Sum, Count, Avg
 from django.db.models.functions import TruncMonth, TruncDay
 from django.utils import timezone
-from .models import (ProductTable, PriceTable, SizeTable, ColorTable, OrderTable, SalesTable, ProdNameTable)
+from .models import (ProductTable, CountryTable, PaystatTable, PriceTable, ItemStatusTable, SizeTable, ColorTable, OrderTable, SalesTable, PaymentTable, CustomerTable, SalesAddressTable, RegionTable, ProvinceTable, CityMunicipalityTable, BarangayTable)
 from .forms import ProductForm
 from .utils import enrich_cart
 import statistics
@@ -112,15 +112,105 @@ def checkout(request):
         messages.warning(request, "Your cart is empty.")
         return redirect('product')
 
-    total_price = 0
-    for item in cart_items:
-        item['subtotal'] = int(item['price']) * int(item['quantity'])
-        total_price += item['subtotal']
+    if request.method == "POST":
+        # 1. Collect customer details
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        contact_no = request.POST.get('contact_no')
+        email = request.POST.get('email')
+
+        # 2. Create customer record
+        customer = CustomerTable.objects.create(
+            firstname=first_name,
+            lastname=last_name,
+            contactno=contact_no,
+            email=email
+        )
+
+        status = ItemStatusTable.objects.get(pk=1)
+
+        # 3. Create sales record
+        total_price = sum(int(item['price']) * int(item['quantity']) for item in cart_items)
+        sales = SalesTable.objects.create(
+            ordernumber=f"ORD-{timezone.now().strftime('%Y%m%d%H%M%S')}",
+            customerid=customer,
+            total_price=total_price,
+            itemstatusid=status,
+            sales_date=timezone.now().date(),
+            sales_time=timezone.now().time()
+        )
+
+        # 4. Save address (using foreign keys to normalized tables)
+        SalesAddressTable.objects.create(
+            salesid=sales,
+            street_name=request.POST.get('street_name'),
+            block_number=request.POST.get('block_number'),
+            lot_number=request.POST.get('lot_number'),
+            house_number=request.POST.get('house_number'),
+            unit_number=request.POST.get('unit_number'),
+            subdivision=request.POST.get('subdivision'),
+            countryid=CountryTable.objects.get(pk=request.POST.get('countryid')),
+            regionid=RegionTable.objects.get(pk=request.POST.get('regionid')),
+            provinceid=ProvinceTable.objects.get(pk=request.POST.get('provinceid')),
+            city_municipalityid=CityMunicipalityTable.objects.get(pk=request.POST.get('cityid')),
+            barangayid=BarangayTable.objects.get(pk=request.POST.get('barangayid')),
+            postal_code=request.POST.get('postal_code'),
+            delivery_instructions=request.POST.get('delivery_instructions'),
+            createdat=timezone.now(),
+        )
+
+        # 5. Save cart items into Order table
+        for item in cart_items:
+            product_instance = ProductTable.objects.get(pk=item['product_id'])
+            size_instance = SizeTable.objects.get(pk=item['size_id'])
+            price_instance = PriceTable.objects.get(pk=item['price_id'])
+
+            OrderTable.objects.create(
+                salesid=sales,
+                productid=product_instance,
+                sizeid=size_instance,
+                priceid=price_instance,
+                quantity=int(item['quantity']),
+            )
+
+        # 6. Save payment
+        paystat = PaystatTable.objects.get(pk=1)  # or whatever id you want
+        PaymentTable.objects.create(
+
+            salesid=sales,
+            mop=request.POST.get('payment_method'),
+            date=timezone.now().date(),
+            time=timezone.now().time(),
+            paystatid=paystat,
+        )
+
+        # 7. Clear cart
+        request.session['cart'] = []
+        messages.success(request, "Your order has been placed successfully!")
+        return redirect('order_success')
+
+    # For GET → load address dropdowns
+    regions = RegionTable.objects.all()
+    provinces = ProvinceTable.objects.all()
+    cities = CityMunicipalityTable.objects.all()
+    barangays = BarangayTable.objects.all()
+    countries = CountryTable.objects.all()
+
+    total_price = sum(int(item['price']) * int(item['quantity']) for item in cart_items)
 
     return render(request, 'checkout.html', {
         'cart_items': cart_items,
-        'total_price': total_price
+        'total_price': total_price,
+        'regions': regions,
+        'provinces': provinces,
+        'cities': cities,
+        'barangays': barangays,
+        'countries': countries,
     })
+
+def order_success(request):
+    return render(request, 'success.html')
+
 
 def product(request):
     # --- FILTER HANDLING ---
@@ -256,9 +346,11 @@ def add_to_cart(request):
             'product_id': product.productid,
             'product_name': product.prodnameid.name,
             'size': size.size,
+            'size_id': size.sizeid,
             'color': product.colorid.colorname,
             'quantity': quantity,
             'price': product.priceid.amount,
+            'price_id': product.priceid.priceid,                 # add price_id here
             'image_url': product.productimage,
         }
 
@@ -431,25 +523,25 @@ def salesMonitor(request):
 
     if sales_timeframe == 'day':
         sales_data = sales.annotate(day=TruncDay('sales_date')) \
-                          .values('day').annotate(total=Count('salesid')).order_by('day')
+                    .values('day').annotate(total=Count('salesid')).order_by('day')
         timeframe_labels = [s['day'].strftime('%d %b') for s in sales_data]
     else:
         sales_data = sales.annotate(month=TruncMonth('sales_date')) \
-                          .values('month').annotate(total=Count('salesid')).order_by('month')
+                    .values('month').annotate(total=Count('salesid')).order_by('month')
         timeframe_labels = [s['month'].strftime('%b').upper() for s in sales_data]
 
     # ========== MOST BOUGHT ANALYTICS ========== #
     color_data = orders.values('productid__colorid__colorname') \
-                       .annotate(total=Sum('quantity')).order_by('-total')
+                    .annotate(total=Sum('quantity')).order_by('-total')
 
     design_data = orders.values('productid__prodnameid__name') \
-                        .annotate(total=Sum('quantity')).order_by('-total')
+                    .annotate(total=Sum('quantity')).order_by('-total')
 
     size_data = orders.values('sizeid__size') \
-                      .annotate(total=Sum('quantity')).order_by('-total')
+                    .annotate(total=Sum('quantity')).order_by('-total')
 
     combo_data = orders.values('productid__prodnameid__name', 'productid__colorid__colorname') \
-                       .annotate(total=Sum('quantity')).order_by('-total')
+                    .annotate(total=Sum('quantity')).order_by('-total')
 
     # ========== AVERAGE ORDER VALUE (AOV) ========== #
     aov = sales.aggregate(avg_order=Avg('total_price'))['avg_order'] or 0

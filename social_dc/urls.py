@@ -13,11 +13,7 @@ urlpatterns = [
     path('adminRegistration/', views.adminRegister, name="adminRegister"),
     path('adminLogin/', views.adminLogin, name="adminLogin"),
     path('admin/logout/', views.admin_logout, name='admin_logout'),
-    path('orderedItems/', views.orderedItems, name="orderedItems"),
-    path('paymentAssessment/', views.paymentAss, name="paymentAss"),
-    path('salesMonitoring/', views.salesMonitor, name="salesMonitor"),
-    path('variantCreation/', views.variantCreation, name="variantCreation"),
-    path('analysis/', views.analysis, name="analysis"),
+    path('orderSuccess/', views.order_success, name="order_success"),
 
     # CART FUNCTIONS
     path('add-to-cart/', views.add_to_cart, name='add_to_cart'),
@@ -26,6 +22,12 @@ urlpatterns = [
 
     # ADD PRODUCT
     path('adminProduct/', views.addProduct, name="addProduct"),
-
     path('adminDashboard/', views.adminDashboard, name='adminDashboard'),
+
+    #Admin URLS 
+    path('orderedItems/', views.orderedItems, name="orderedItems"),
+    path('paymentAssessment/', views.paymentAss, name="paymentAss"),
+    path('salesMonitoring/', views.salesMonitor, name="salesMonitor"),
+    path('variantCreation/', views.variantCreation, name="variantCreation"),
+    path('analysis/', views.analysis, name="analysis"),
 ]

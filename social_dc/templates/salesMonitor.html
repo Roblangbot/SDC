@@ -108,7 +108,7 @@
                 datasets: [{
                     label: label,
                     data: data,
-                    backgroundColor: '#36a2eb'
+                    backgroundColor: ['#36a2eb', '#ff6384', '#ffcd56', '#4bc0c0', '#9966ff']
                 }]
             }
         });
@@ -133,7 +133,7 @@
     // Render Charts using data from Django context
     renderPie('designChart', {{ design_labels|safe }}, {{ design_totals|safe }});
     renderPie('sizeChart', {{ size_labels|safe }}, {{ size_totals|safe }});
-    renderBar('comboChart', {{ combo_labels|safe }}, {{ combo_totals|safe }}, 'Product/Color');
+    renderBar('comboChart', {{ combo_labels|safe }}, {{ combo_totals|safe }});
     renderLine('salesChart', {{ sales_labels|safe }}, {{ sales_totals|safe }});
 </script>
 {% endblock %}

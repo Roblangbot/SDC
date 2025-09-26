@@ -4,20 +4,156 @@
 {% block content %}
 
 <div class="container py-5">
-  <h2>Checkout</h2>
-  {% for item in cart_items %}
-  <div class="container d-flex">
-    <div class="container-fluid m-5">
-        <img src="{{item.image_url}}" alt="" style="width: 150px;">
-    </div>
-    <div class="container-fluid m-5">
-        <p>{{ item.product_name }} - {{ item.size }} - {{ item.color }} × {{ item.quantity }} = ₱{{ item.subtotal }}</p>
+  <div class="row">
+    <!-- LEFT: Checkout Form -->
+    <div class="col-md-7">
+      <h3 class="mb-4">Checkout</h3>
+      <form method="POST" action="{% url 'checkout' %}">
+        {% csrf_token %}
+        
+        <!-- Contact Information -->
+        <h5 class="mb-3">Contact Information</h5>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <input type="text" name="first_name" class="form-control" placeholder="First Name" required>
+          </div>
+          <div class="col-md-6 mb-3">
+            <input type="text" name="last_name" class="form-control" placeholder="Last Name" required>
+          </div>
+        </div>
+        <div class="mb-3">
+          <input type="email" name="email" class="form-control" placeholder="Email" required>
+        </div>
+        <div class="mb-3">
+          <input type="text" name="contact_no" class="form-control" placeholder="Contact No." required>
+        </div>
+
+        <!-- Delivery Address -->
+        <h5 class="mb-3 mt-4">Delivery Address</h5>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <input type="text" name="house_number" class="form-control" placeholder="House No.">
+          </div>
+          <div class="col-md-4 mb-3">
+            <input type="text" name="block_number" class="form-control" placeholder="Block No.">
+          </div>
+          <div class="col-md-4 mb-3">
+            <input type="text" name="lot_number" class="form-control" placeholder="Lot No.">
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <input type="text" name="unit_number" class="form-control" placeholder="Unit/Apartment No.">
+          </div>
+          <div class="col-md-6 mb-3">
+            <input type="text" name="street_name" class="form-control" placeholder="Street Name">
+          </div>
+        </div>
+        <div class="mb-3">
+          <input type="text" name="subdivision" class="form-control" placeholder="Subdivision (optional)">
+        </div>
+
+
+        <div class="mb-3">
+          <label for="country" class="form-label">Country</label>
+          <select id="country" name="countryid" class="form-select" required>
+            <option value="">Select Country</option>
+            {% for country in countries %}
+              <option value="{{ country.countryid }}">{{ country.country_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <!-- Region → Province → City → Barangay -->
+        <div class="mb-3">
+          <label for="region" class="form-label">Region</label>
+          <select id="region" name="regionid" class="form-select" required>
+            <option value="">Select Region</option>
+            {% for region in regions %}
+              <option value="{{ region.regionid }}">{{ region.region_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="province" class="form-label">Province</label>
+          <select id="province" name="provinceid" class="form-select" required>
+            <option value="">Select Province</option>
+            {% for province in provinces %}
+              <option value="{{ province.provinceid }}">{{ province.province_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="city" class="form-label">City / Municipality</label>
+          <select id="city" name="cityid" class="form-select" required>
+            <option value="">Select City</option>
+            {% for city in cities %}
+              <option value="{{ city.cityid }}">{{ city.city_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="barangay" class="form-label">Barangay</label>
+          <select id="barangay" name="barangayid" class="form-select" required>
+            <option value="">Select Barangay</option>
+            {% for barangay in barangays %}
+              <option value="{{ barangay.barangayid }}">{{ barangay.barangay_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <input type="text" name="postal_code" class="form-control" placeholder="Postal Code" required>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <textarea name="delivery_instructions" class="form-control" rows="3" placeholder="Delivery instructions (optional)"></textarea>
+        </div>
+        <div class="mb-3">
+          <label for="payment_method" class="form-label">Mode of Payment</label>
+          <select id="payment_method" name="payment_method" class="form-select" required>
+            <option value="">Select Payment Method</option>
+            <option value="CASH">Cash</option>
+            <!-- You can add more options here if needed -->
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-dark w-100">Confirm Order</button>
+      </form>
     </div>
 
+    <!-- RIGHT: Cart Summary -->
+    <div class="col-md-5">
+      <div class="card shadow-sm p-4">
+        <h5 class="mb-3">Order Summary</h5>
+        {% for item in cart_items %}
+        <div class="d-flex align-items-center mb-3 border-bottom pb-2">
+          <img src="{{ item.image_url }}" alt="{{ item.product_name }}" class="me-3" style="width: 80px; height: auto;">
+          <div>
+            <p class="mb-1 fw-bold">{{ item.product_name }}</p>
+            <small>{{ item.size }} - {{ item.color }}</small><br>
+            <small>Qty: {{ item.quantity }}</small>
+          </div>
+          <div class="ms-auto fw-bold">₱{{ item.subtotal }}</div>
+        </div>
+        {% endfor %}
+        <div class="d-flex justify-content-between mt-3">
+          <span>Subtotal</span>
+          <span>₱{{ total_price }}</span>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>Shipping</span>
+          <span>Calculated at checkout</span>
+        </div>
+        <hr>
+        <div class="d-flex justify-content-between fw-bold">
+          <span>Total</span>
+          <span>₱{{ total_price }}</span>
+        </div>
+      </div>
+    </div>
   </div>
-  {% endfor %}
-  <h4 class="mt-4">Total: ₱{{ total_price }}</h4>
-  <button class="btn btn-primary mt-3">Confirm Order</button>
 </div>
 
 {% endblock %}

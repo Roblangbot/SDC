@@ -160,18 +160,35 @@ def checkout(request):
         )
 
         # 5. Save cart items into Order table
+        
         for item in cart_items:
-            product_instance = ProductTable.objects.get(pk=item['product_id'])
-            size_instance = SizeTable.objects.get(pk=item['size_id'])
-            price_instance = PriceTable.objects.get(pk=item['price_id'])
+            try:
+                product_instance = ProductTable.objects.get(pk=item['product_id'])
+                size_instance = SizeTable.objects.get(pk=item['size_id'])
+                price_instance = PriceTable.objects.get(pk=item['price_id'])
 
-            OrderTable.objects.create(
-                salesid=sales,
-                productid=product_instance,
-                sizeid=size_instance,
-                priceid=price_instance,
-                quantity=int(item['quantity']),
-            )
+                # Check for existing order
+                existing_order = OrderTable.objects.filter(
+                    salesid=sales,
+                    productid=product_instance,
+                    sizeid=size_instance
+                ).first()
+
+                if existing_order:
+                    existing_order.quantity += int(item['quantity'])
+                    existing_order.save()
+                else:
+                    OrderTable.objects.create(
+                        salesid=sales,
+                        productid=product_instance,
+                        sizeid=size_instance,
+                        priceid=price_instance,
+                        quantity=int(item['quantity']),
+                    )
+
+            except Exception as e:
+                print(f"❌ Error saving order item {item['product_name']} → {e}")
+
 
         # 6. Save payment
         paystat = PaystatTable.objects.get(pk=1)  # or whatever id you want

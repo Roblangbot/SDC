@@ -1,6 +1,6 @@
 # forms.py
 from django import forms
-from .models import ProductTable, ColorTable, ProdNameTable, PriceTable, CustomerTable, SalesAddressTable
+from .models import ProductTable, ColorTable, ProdNameTable, PriceTable, CustomerTable, SalesAddressTable, PaymentTable, SalesTable
 
 class ProductForm(forms.ModelForm):
     prodnameid = forms.ModelChoiceField(
@@ -37,3 +37,23 @@ class AddressForm(forms.ModelForm):
             'street_name', 'subdivision', 'barangayid', 'postal_code', 'city_municipalityid',
             'provinceid', 'regionid', 'countryid', 'delivery_instructions'
         ]
+
+class CombinedStatusForm(forms.Form):
+    itemstatusid = forms.ModelChoiceField(
+        queryset=SalesTable._meta.get_field('itemstatusid').related_model.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    paystatid = forms.ModelChoiceField(
+        queryset=PaymentTable._meta.get_field('paystatid').related_model.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    salesid = forms.IntegerField(widget=forms.HiddenInput())
+    paymentid = forms.IntegerField(widget=forms.HiddenInput())
+
+class ProdNameForm(forms.ModelForm):
+    class Meta:
+        model = ProdNameTable
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter product name'}),
+        }

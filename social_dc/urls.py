@@ -23,11 +23,13 @@ urlpatterns = [
     # ADD PRODUCT
     path('adminProduct/', views.addProduct, name="addProduct"),
     path('adminDashboard/', views.adminDashboard, name='adminDashboard'),
+    path('newProductName/', views.newProductName, name="newProductName"),
 
     #Admin URLS 
     path('orderedItems/', views.orderedItems, name="orderedItems"),
     path('paymentAssessment/', views.paymentAss, name="paymentAss"),
     path('salesMonitoring/', views.salesMonitor, name="salesMonitor"),
-    path('variantCreation/', views.variantCreation, name="variantCreation"),
     path('analysis/', views.analysis, name="analysis"),
+    path('salesManagement/', views.salesManagement, name="salesManagement"),
+    path('salesManagement/update-statuses/', views.update_statuses, name='update_statuses'),
 ]

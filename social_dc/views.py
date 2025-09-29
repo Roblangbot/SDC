@@ -10,11 +10,11 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponseBadRequest, HttpResponseNotFound, JsonResponse, HttpResponseRedirect
-from django.db.models import Sum, Count, Avg
+from django.db.models import Sum, Count, Avg, Q
 from django.db.models.functions import TruncMonth, TruncDay
 from django.utils import timezone
-from .models import (ProductTable, CountryTable, PaystatTable, PriceTable, ItemStatusTable, SizeTable, ColorTable, OrderTable, SalesTable, PaymentTable, CustomerTable, SalesAddressTable, RegionTable, ProvinceTable, CityMunicipalityTable, BarangayTable)
-from .forms import ProductForm
+from .models import (ProductTable, CountryTable, PaystatTable, ProdNameTable, PriceTable, ItemStatusTable, SizeTable, ColorTable, OrderTable, SalesTable, PaymentTable, CustomerTable, SalesAddressTable, RegionTable, ProvinceTable, CityMunicipalityTable, BarangayTable)
+from .forms import ProductForm, CombinedStatusForm, ProdNameForm
 from .utils import enrich_cart
 import statistics
 from django.core.paginator import Paginator
@@ -73,8 +73,28 @@ def admin_logout(request):
 
 def home(request):
     cart_items, total_price = enrich_cart(request.session)
+        # Get top 3 best selling products by total quantity
+        # Step 1: Aggregate total quantity sold per product (Top 3)
+    best_seller_data = (
+        OrderTable.objects
+        .values('productid')  # Group by product ID
+        .annotate(total_sold=Sum('quantity'))  # Sum of all quantities per product
+        .order_by('-total_sold')[:3]  # Take top 3
+    )
 
-    return render(request, 'index.html', {'cart_items': cart_items, 'total_price': total_price})
+    # Step 2: Extract product IDs from the above result
+    best_seller_ids = [item['productid'] for item in best_seller_data]
+
+    # Step 3: Get full ProductTable objects using the IDs
+    best_selling_products_queryset = ProductTable.objects.filter(productid__in=best_seller_ids)
+
+    # Step 4: Sort the products to match the order in best_seller_data
+    best_selling_products = sorted(
+        best_selling_products_queryset,
+        key=lambda product: best_seller_ids.index(product.productid)
+    )
+
+    return render(request, 'index.html', {'cart_items': cart_items, 'total_price': total_price, 'best_selling_products': best_selling_products})
 
 def faq(request):
     cart_items, total_price = enrich_cart(request.session)
@@ -245,9 +265,23 @@ def product(request):
         # Default query: only show black variant
         products = ProductTable.objects.filter(colorid=black_color).select_related("prodnameid", "colorid")
 
-        # Apply filters dynamically
         if filter_type == "best_seller":
-            products = products.annotate(order_count=Count("ordertable")).order_by("-order_count")[:10]
+            # Step 1: Aggregate total quantity sold per product (top 10)
+            best_seller_data = (
+                OrderTable.objects
+                .values('productid')
+                .annotate(total_sold=Sum('quantity'))
+                .order_by('-total_sold')[:10]
+            )
+
+            # Step 2: Extract product IDs
+            best_seller_ids = [item['productid'] for item in best_seller_data]
+
+            # Step 3: Fetch full ProductTable objects matching those IDs
+            products = ProductTable.objects.filter(productid__in=best_seller_ids)
+
+            # Step 4: Sort them to match the best-selling order
+            products = sorted(products, key=lambda p: best_seller_ids.index(p.productid))
 
         elif filter_type == "complete_color":
             # Products that have all color variants
@@ -519,10 +553,131 @@ def analysis(request):
     return render(request, 'analysis.html')
 
 @login_required(login_url='adminLogin')
-def variantCreation(request):
+def newProductName(request):
+    edit_prodname = None
+    form = None
 
+    # Check if editing (GET param 'edit')
+    edit_id = request.GET.get('edit')
+    if edit_id:
+        edit_prodname = get_object_or_404(ProdNameTable, pk=edit_id)
+        form = ProdNameForm(instance=edit_prodname)
+    else:
+        form = ProdNameForm()
 
-    return render(request, 'variantCreation.html')
+    if request.method == 'POST':
+        # Delete request
+        if 'delete_prodnameid' in request.POST:
+            prodname = get_object_or_404(ProdNameTable, pk=request.POST['delete_prodnameid'])
+            prodname.delete()
+            messages.success(request, "Product name deleted.")
+            return redirect('newProductName')
+
+        # Update or Create request
+        prodname_id = request.POST.get('prodnameid')
+        if prodname_id:
+            # Update
+            prodname = get_object_or_404(ProdNameTable, pk=prodname_id)
+            form = ProdNameForm(request.POST, instance=prodname)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Product name updated.")
+                return redirect('newProductName')
+        else:
+            # Create
+            form = ProdNameForm(request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Product name added.")
+                return redirect('newProductName')
+
+    product_names = ProdNameTable.objects.all().order_by('-prodnameid')
+    return render(request, 'newProductName.html', {
+        'form': form,
+        'product_names': product_names,
+        'edit_prodname': edit_prodname,
+    })
+
+@login_required(login_url='adminLogin')
+def salesManagement(request):
+    search_query = request.GET.get('search', '')
+
+    sales_qs = SalesTable.objects.all() \
+        .select_related('customerid', 'itemstatusid') \
+        .order_by('-sales_date', '-sales_time')
+
+    if search_query:
+        # Search by order number or customer first/last name (case-insensitive)
+        sales_qs = sales_qs.filter(
+            Q(ordernumber__icontains=search_query) |
+            Q(customerid__firstname__icontains=search_query) |
+            Q(customerid__lastname__icontains=search_query)
+        )
+
+    paginator = Paginator(sales_qs, 10)  # 10 sales per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Get IDs of sales in current page
+    sales_ids = list(page_obj.object_list.values_list('salesid', flat=True))
+
+    # Get payments related to these sales
+    payments = PaymentTable.objects.filter(salesid__in=sales_ids).select_related('paystatid')
+
+    # Prepare a dict of payments keyed by salesid (assuming one payment per sale)
+    payment_dict = {}
+    for payment in payments:
+        payment_dict[payment.salesid_id] = payment  # map sale id to payment object
+
+    # Prepare combined forms for each sale
+    combined_forms = {}
+    for sale in page_obj.object_list:
+        payment = payment_dict.get(sale.salesid)
+        if payment:
+            initial_data = {
+                'itemstatusid': sale.itemstatusid_id,
+                'paystatid': payment.paystatid_id,
+                'salesid': sale.salesid,
+                'paymentid': payment.paymentid,
+            }
+            combined_forms[sale.salesid] = CombinedStatusForm(initial=initial_data)
+        else:
+            # If no payment found, just fill itemstatus and salesid
+            initial_data = {
+                'itemstatusid': sale.itemstatusid_id,
+                'salesid': sale.salesid,
+                # paymentid is required in the form, so you might want to handle this case accordingly
+            }
+            combined_forms[sale.salesid] = CombinedStatusForm(initial=initial_data)
+
+    return render(request, 'salesManagement.html', {
+        'page_obj': page_obj,
+        'payments': payments,
+        'combined_forms': combined_forms,  # pass combined forms instead of separate forms
+        'search_query': search_query,
+    })
+
+@login_required(login_url='adminLogin')
+def update_statuses(request):
+    if request.method == 'POST':
+        form = CombinedStatusForm(request.POST)
+        if form.is_valid():
+            salesid = form.cleaned_data.get('salesid')
+            paymentid = form.cleaned_data.get('paymentid')
+            itemstatusid = form.cleaned_data.get('itemstatusid')
+            paystatid = form.cleaned_data.get('paystatid')
+
+            if salesid and itemstatusid:
+                sale = get_object_or_404(SalesTable, pk=salesid)
+                sale.itemstatusid = itemstatusid
+                sale.save()
+
+            if paymentid and paystatid:
+                payment = get_object_or_404(PaymentTable, pk=paymentid)
+                payment.paystatid = paystatid
+                payment.save()
+
+    return redirect('salesManagement')
 
 # DATA ANALYSIS
 @login_required(login_url='adminLogin')
@@ -564,11 +719,11 @@ def salesMonitor(request):
     aov = sales.aggregate(avg_order=Avg('total_price'))['avg_order'] or 0
 
     # ========== CUSTOMER LIFETIME VALUE (CLTV) ========== #
-    cltv_data = sales.values('customerid__name') \
+    cltv_data = sales.values('customerid__firstname') \
                      .annotate(cltv=Sum('total_price')) \
                      .order_by('-cltv')[:5]  # top 5 customers
 
-    cltv_labels = [entry['customerid__name'] for entry in cltv_data]
+    cltv_labels = [entry['customerid__firstname'] for entry in cltv_data]
     cltv_totals = [entry['cltv'] for entry in cltv_data]
 
     # ========== SALES TREND ANALYSIS ========== #

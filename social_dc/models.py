@@ -197,6 +197,9 @@ class ItemStatusTable(models.Model):
     class Meta:
         managed = False
         db_table = 'item status table'
+    
+    def __str__(self):
+        return self.itemstat
 
 
 class MonthyreportTable(models.Model):
@@ -244,7 +247,9 @@ class PaystatTable(models.Model):
     class Meta:
         managed = False
         db_table = 'paystat_table'
-
+        
+    def __str__(self):
+        return self.status
 
 class PriceTable(models.Model):
     priceid = models.IntegerField(db_column='priceID', primary_key=True)  # Field name made lowercase.

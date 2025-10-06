@@ -247,9 +247,10 @@ class PaystatTable(models.Model):
     class Meta:
         managed = False
         db_table = 'paystat_table'
-        
+
     def __str__(self):
         return self.status
+
 
 class PriceTable(models.Model):
     priceid = models.IntegerField(db_column='priceID', primary_key=True)  # Field name made lowercase.
@@ -286,7 +287,7 @@ class ProductTable(models.Model):
     class Meta:
         managed = False
         db_table = 'product_table'
-
+        
     def __str__(self):
         return f"{self.prodnameid} - {self.colorid} - ${self.priceid}"
 
@@ -313,27 +314,15 @@ class RegionTable(models.Model):
 class SalesAddressTable(models.Model):
     sales_addressid = models.AutoField(db_column='sales_addressID', primary_key=True)  # Field name made lowercase.
     salesid = models.ForeignKey('SalesTable', models.DO_NOTHING, db_column='salesID')  # Field name made lowercase.
-    block_number = models.CharField(max_length=50, blank=True, null=True)
-    lot_number = models.CharField(max_length=50, blank=True, null=True)
-    house_number = models.CharField(max_length=50, blank=True, null=True)
-    unit_number = models.CharField(max_length=50, blank=True, null=True)
-    street_name = models.CharField(max_length=255, null=False, blank=False)
-    subdivision = models.CharField(max_length=255, blank=True, null=True)
-    barangayid = models.ForeignKey(BarangayTable, models.DO_NOTHING, db_column='barangayID')  # Field name made lowercase.
-    city_municipalityid = models.ForeignKey(CityMunicipalityTable, models.DO_NOTHING, db_column='city_municipalityID', blank=True, null=True)  # Field name made lowercase.
-    provinceid = models.ForeignKey(ProvinceTable, models.DO_NOTHING, db_column='provinceID', blank=True, null=True)  # Field name made lowercase.
-    regionid = models.ForeignKey(RegionTable, models.DO_NOTHING, db_column='regionID')  # Field name made lowercase.
-    countryid = models.ForeignKey(CountryTable, models.DO_NOTHING, db_column='countryID')  # Field name made lowercase.
-    postal_code = models.CharField(max_length=10, blank=True, null=True)
+    full_address = models.CharField(max_length=999)
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
     delivery_instructions = models.TextField(blank=True, null=True)
     createdat = models.DateTimeField(db_column='createdAt')  # Field name made lowercase.
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'sales_address_table'
-    
-    def __str__(self):
-        return f"{self.street_name}, {self.barangayid}"
 
 
 class SalesTable(models.Model):

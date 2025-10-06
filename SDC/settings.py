@@ -134,3 +134,12 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 # Optional: session cookie duration in seconds
 SESSION_COOKIE_AGE = 3600  # 1 hour, default is 300 seconds (5 minutes)
+
+# Email settings for sending contact form submissions
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'ceejhaysuriaga@gmail.com'
+EMAIL_HOST_PASSWORD = 'hzgo afxy irnk nunb'  # Use App Password, NOT your real Gmail password
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

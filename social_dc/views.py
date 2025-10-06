@@ -7,12 +7,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import send_mail, BadHeaderError, EmailMessage
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponseBadRequest, HttpResponseNotFound, JsonResponse, HttpResponseRedirect
-from django.db.models import Sum, Count, Avg, Q
+from django.db.models import Sum, Count, Avg, Q, OuterRef, Subquery
 from django.db.models.functions import TruncMonth, TruncDay
+from calendar import monthrange
 from django.utils import timezone
+from datetime import timedelta
 from .models import (ProductTable, CountryTable, PaystatTable, ProdNameTable, PriceTable, ItemStatusTable, SizeTable, ColorTable, OrderTable, SalesTable, PaymentTable, CustomerTable, SalesAddressTable, RegionTable, ProvinceTable, CityMunicipalityTable, BarangayTable)
 from .forms import ProductForm, CombinedStatusForm, ProdNameForm
 from .utils import enrich_cart
@@ -108,23 +110,33 @@ def aboutus(request):
 
 def contacts(request):
     cart_items, total_price = enrich_cart(request.session)
-    
+
     if request.method == 'POST':
-        email = request.POST.get('email')
+        sender_email = request.POST.get('email')
         message = request.POST.get('message')
 
         subject = 'New Contact Form Submission'
-        body = f"From: {email}\n\nMessage:\n{message}"
+        body = f"Message from: {sender_email}\n\n{message}"
 
         try:
-            send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, ['yourdestination@example.com'])
+            email = EmailMessage(
+                subject=subject,
+                body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,  # ✅ Always your verified email
+                to=[settings.DEFAULT_FROM_EMAIL],        # ✅ Sent to your inbox
+                reply_to=[sender_email]                  # ✅ Reply goes to visitor
+            )
+            email.send()
             messages.success(request, "Your message has been sent successfully!")
-        except:
-            messages.error(request, "Something went wrong. Please try again.")
+        except Exception as e:
+            messages.error(request, f"Something went wrong. {e}")
 
-        return redirect('contact')  # or redirect to a thank-you page
+        return redirect('contacts')
 
-    return render(request, 'contacts.html', {'cart_items': cart_items, 'total_price': total_price})
+    return render(request, 'contacts.html', {
+        'cart_items': cart_items,
+        'total_price': total_price,
+    })
 
 def checkout(request):
     cart_items = request.session.get('cart', [])
@@ -133,13 +145,13 @@ def checkout(request):
         return redirect('product')
 
     if request.method == "POST":
-        # 1. Collect customer details
+        # 1. Get customer info
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         contact_no = request.POST.get('contact_no')
         email = request.POST.get('email')
 
-        # 2. Create customer record
+        # 2. Create customer
         customer = CustomerTable.objects.create(
             firstname=first_name,
             lastname=last_name,
@@ -147,10 +159,9 @@ def checkout(request):
             email=email
         )
 
-        status = ItemStatusTable.objects.get(pk=1)
-
         # 3. Create sales record
         total_price = sum(int(item['price']) * int(item['quantity']) for item in cart_items)
+        status = ItemStatusTable.objects.get(pk=1)
         sales = SalesTable.objects.create(
             ordernumber=f"ORD-{timezone.now().strftime('%Y%m%d%H%M%S')}",
             customerid=customer,
@@ -160,38 +171,27 @@ def checkout(request):
             sales_time=timezone.now().time()
         )
 
-        # 4. Save address (using foreign keys to normalized tables)
+        # 4. Create address (new format)
         SalesAddressTable.objects.create(
             salesid=sales,
-            street_name=request.POST.get('street_name'),
-            block_number=request.POST.get('block_number'),
-            lot_number=request.POST.get('lot_number'),
-            house_number=request.POST.get('house_number'),
-            unit_number=request.POST.get('unit_number'),
-            subdivision=request.POST.get('subdivision'),
-            countryid=CountryTable.objects.get(pk=request.POST.get('countryid')),
-            regionid=RegionTable.objects.get(pk=request.POST.get('regionid')),
-            provinceid=ProvinceTable.objects.get(pk=request.POST.get('provinceid')),
-            city_municipalityid=CityMunicipalityTable.objects.get(pk=request.POST.get('cityid')),
-            barangayid=BarangayTable.objects.get(pk=request.POST.get('barangayid')),
-            postal_code=request.POST.get('postal_code'),
+            full_address=request.POST.get('full_address'),
+            latitude=request.POST.get('latitude'),
+            longitude=request.POST.get('longitude'),
             delivery_instructions=request.POST.get('delivery_instructions'),
-            createdat=timezone.now(),
+            createdat=timezone.now()
         )
 
-        # 5. Save cart items into Order table
-        
+        # 5. Save order items
         for item in cart_items:
             try:
-                product_instance = ProductTable.objects.get(pk=item['product_id'])
-                size_instance = SizeTable.objects.get(pk=item['size_id'])
-                price_instance = PriceTable.objects.get(pk=item['price_id'])
+                product = ProductTable.objects.get(pk=item['product_id'])
+                size = SizeTable.objects.get(pk=item['size_id'])
+                price = PriceTable.objects.get(pk=item['price_id'])
 
-                # Check for existing order
                 existing_order = OrderTable.objects.filter(
                     salesid=sales,
-                    productid=product_instance,
-                    sizeid=size_instance
+                    productid=product,
+                    sizeid=size
                 ).first()
 
                 if existing_order:
@@ -200,20 +200,18 @@ def checkout(request):
                 else:
                     OrderTable.objects.create(
                         salesid=sales,
-                        productid=product_instance,
-                        sizeid=size_instance,
-                        priceid=price_instance,
+                        productid=product,
+                        sizeid=size,
+                        priceid=price,
                         quantity=int(item['quantity']),
                     )
 
             except Exception as e:
-                print(f"❌ Error saving order item {item['product_name']} → {e}")
-
+                print(f"❌ Error saving item '{item['product_name']}': {e}")
 
         # 6. Save payment
-        paystat = PaystatTable.objects.get(pk=1)  # or whatever id you want
+        paystat = PaystatTable.objects.get(pk=1)
         PaymentTable.objects.create(
-
             salesid=sales,
             mop=request.POST.get('payment_method'),
             date=timezone.now().date(),
@@ -223,26 +221,13 @@ def checkout(request):
 
         # 7. Clear cart
         request.session['cart'] = []
-        messages.success(request, "Your order has been placed successfully!")
         return redirect('order_success')
 
-    # For GET → load address dropdowns
-    regions = RegionTable.objects.all()
-    provinces = ProvinceTable.objects.all()
-    cities = CityMunicipalityTable.objects.all()
-    barangays = BarangayTable.objects.all()
-    countries = CountryTable.objects.all()
-
+    # For GET request, we no longer need address dropdowns
     total_price = sum(int(item['price']) * int(item['quantity']) for item in cart_items)
-
     return render(request, 'checkout.html', {
         'cart_items': cart_items,
         'total_price': total_price,
-        'regions': regions,
-        'provinces': provinces,
-        'cities': cities,
-        'barangays': barangays,
-        'countries': countries,
     })
 
 def order_success(request):
@@ -481,7 +466,95 @@ def cart(request):
 
 @login_required(login_url='adminLogin')
 def adminDashboard(request):
-    return render(request, 'adminDashboard.html')
+    today = date.today()
+    start_date = today - timedelta(days=29)  # last 30 days including today
+    end_date = today
+
+    # Fetch orders and sales in current month
+    orders = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))
+    sales = SalesTable.objects.filter(sales_date__range=(start_date, end_date))
+
+    # 1. Sales Over Time (Daily Aggregation)
+    sales_time_data = sales.annotate(day=TruncDay('sales_date')) \
+        .values('day') \
+        .annotate(total_sales=Sum('total_price')) \
+        .order_by('day')
+
+    sales_labels = [item['day'].strftime('%d %b') if item['day'] else '' for item in sales_time_data]
+    sales_totals = [item['total_sales'] or 0 for item in sales_time_data]
+
+    # 2. Recent Orders (Latest 4)
+    recent_orders_qs = orders.select_related(
+        'productid__prodnameid',
+        'productid__colorid',
+        'salesid__customerid'
+    ).order_by('-salesid__sales_date')[:4]
+
+    recent_orders = []
+    for o in recent_orders_qs:
+        recent_orders.append({
+            'order_id': o.salesid.salesid,
+            'product_name': o.productid.prodnameid.name,
+            'customer_name': o.salesid.customerid.firstname,
+            'time_diff': o.salesid.sales_date,  # Format in template if needed
+            'amount': o.quantity * getattr(o.productid.priceid, 'amount', 0),
+            'image_url': getattr(o.productid, 'productimage', ''),  # safer access
+        })
+
+    # 3. Top-Selling Products
+    top_products_data = (
+        orders
+        .values('productid', 'productid__prodnameid__name', 'productid__productimage', 'productid__priceid__amount')
+        .annotate(total_qty=Sum('quantity'))
+        .order_by('-total_qty')[:5]
+    )
+
+    # Status badge mapping
+    badge_map = {
+        'Delivered': 'text-bg-success',
+        'Pending': 'text-bg-warning',
+        'Cancelled': 'text-bg-danger'
+    }
+
+    top_products = []
+    for product in top_products_data:
+        # Get latest order's item status for this product in current month
+        latest_order = OrderTable.objects.filter(
+            productid=product['productid'],
+            salesid__sales_date__range=(start_date, end_date)
+        ).order_by('-salesid__sales_date').select_related('salesid__itemstatusid').first()
+
+        status = getattr(latest_order.salesid.itemstatusid, 'itemstat', 'Unknown') if latest_order else 'Unknown'
+        badge_class = badge_map.get(status, 'text-bg-secondary')
+
+        top_products.append({
+            'name': product['productid__prodnameid__name'],
+            'image_url': product.get('productid__productimage', ''),
+            'quantity_sold': product['total_qty'],
+            'price': product.get('productid__priceid__amount', 0),
+            'status': status,
+            'badge_class': badge_class,
+        })
+
+    # 4. Dashboard Metrics
+    total_sales = sales.aggregate(total=Sum('total_price'))['total'] or 0
+    new_orders = orders.count()
+    total_customers = sales.values('customerid').distinct().count()
+
+    # Context
+    context = {
+        'sales_labels': sales_labels,
+        'sales_totals': sales_totals,
+        'recent_orders': recent_orders,
+        'top_products': top_products,
+        'total_sales': round(total_sales, 2),
+        'new_orders': new_orders,
+        'total_customers': total_customers,
+        'start_date': start_date,
+        'end_date': end_date,
+    }
+
+    return render(request, 'adminDashboard.html', context)
 
 @login_required(login_url='adminLogin')
 def addProduct(request):
@@ -539,10 +612,6 @@ def orderedItems(request):
     }
     
     return render(request, 'orderItems.html', context)
-
-@login_required(login_url='adminLogin')
-def paymentAss(request):
-    return render(request, 'paymentAss.html')
 
 @login_required(login_url='adminLogin')
 def inventory(request):
@@ -682,9 +751,13 @@ def update_statuses(request):
 # DATA ANALYSIS
 @login_required(login_url='adminLogin')
 def salesMonitor(request):
-    # Filter April to May 2023 — you can later generalize this to be dynamic
-    start_date = date(2023, 4, 1)
-    end_date = date(2023, 5, 31)
+    # Get current date
+    today = date.today()
+    
+    # Get the first and last day of the current month
+    start_date = date(today.year, today.month, 1)
+    end_day = monthrange(today.year, today.month)[1]
+    end_date = date(today.year, today.month, end_day)
 
     # Filter orders and sales within date range
     orders = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))

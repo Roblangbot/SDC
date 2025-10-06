@@ -27,7 +27,6 @@ urlpatterns = [
 
     #Admin URLS 
     path('orderedItems/', views.orderedItems, name="orderedItems"),
-    path('paymentAssessment/', views.paymentAss, name="paymentAss"),
     path('salesMonitoring/', views.salesMonitor, name="salesMonitor"),
     path('analysis/', views.analysis, name="analysis"),
     path('salesManagement/', views.salesManagement, name="salesManagement"),

@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %} Checkout Page {% endblock %} 
-{% block content %}
+{% block title %} Checkout Page {% endblock %}
 
+{% block content %}
 <div class="container py-5">
   <div class="row">
-    <!-- LEFT: Checkout Form -->
+
     <div class="col-md-7">
       <h3 class="mb-4">Checkout</h3>
-      <form method="POST" action="{% url 'checkout' %}">
+
+      <form method="POST" action="{% url 'checkout' %}" id="checkoutForm">
         {% csrf_token %}
-        
+
         <!-- Contact Information -->
         <h5 class="mb-3">Contact Information</h5>
         <div class="row">
@@ -28,83 +29,22 @@
           <input type="text" name="contact_no" class="form-control" placeholder="Contact No." required>
         </div>
 
-        <!-- Delivery Address -->
+        <!-- Delivery Address Section -->
         <h5 class="mb-3 mt-4">Delivery Address</h5>
-        <div class="row">
-          <div class="col-md-4 mb-3">
-            <input type="text" name="house_number" class="form-control" placeholder="House No.">
-          </div>
-          <div class="col-md-4 mb-3">
-            <input type="text" name="block_number" class="form-control" placeholder="Block No.">
-          </div>
-          <div class="col-md-4 mb-3">
-            <input type="text" name="lot_number" class="form-control" placeholder="Lot No.">
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <input type="text" name="unit_number" class="form-control" placeholder="Unit/Apartment No.">
-          </div>
-          <div class="col-md-6 mb-3">
-            <input type="text" name="street_name" class="form-control" placeholder="Street Name">
-          </div>
-        </div>
-        <div class="mb-3">
-          <input type="text" name="subdivision" class="form-control" placeholder="Subdivision (optional)">
+
+        <!-- Modal prompt-like choice -->
+        <div id="addressChoice" class="mb-3">
+          <p>How would you like to set your address?</p>
+          <button type="button" class="btn btn-primary me-2" id="btnUseLocation">Use current location</button>
+          <button type="button" class="btn btn-outline-secondary" id="btnManualAddress">Enter address manually</button>
         </div>
 
-
-        <div class="mb-3">
-          <label for="country" class="form-label">Country</label>
-          <select id="country" name="countryid" class="form-select" required>
-            <option value="">Select Country</option>
-            {% for country in countries %}
-              <option value="{{ country.countryid }}">{{ country.country_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <!-- Region → Province → City → Barangay -->
-        <div class="mb-3">
-          <label for="region" class="form-label">Region</label>
-          <select id="region" name="regionid" class="form-select" required>
-            <option value="">Select Region</option>
-            {% for region in regions %}
-              <option value="{{ region.regionid }}">{{ region.region_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="province" class="form-label">Province</label>
-          <select id="province" name="provinceid" class="form-select" required>
-            <option value="">Select Province</option>
-            {% for province in provinces %}
-              <option value="{{ province.provinceid }}">{{ province.province_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="city" class="form-label">City / Municipality</label>
-          <select id="city" name="cityid" class="form-select" required>
-            <option value="">Select City</option>
-            {% for city in cities %}
-              <option value="{{ city.cityid }}">{{ city.city_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="barangay" class="form-label">Barangay</label>
-          <select id="barangay" name="barangayid" class="form-select" required>
-            <option value="">Select Barangay</option>
-            {% for barangay in barangays %}
-              <option value="{{ barangay.barangayid }}">{{ barangay.barangay_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <input type="text" name="postal_code" class="form-control" placeholder="Postal Code" required>
-          </div>
+        <!-- Manual address input & map (hidden initially) -->
+        <div id="manualAddressSection" style="display: none;">
+          <input type="text" name="full_address" id="autocomplete" class="form-control mb-3" placeholder="Type your address">
+          <input type="hidden" name="latitude" id="latitude">
+          <input type="hidden" name="longitude" id="longitude">
+          <div id="map" style="width:100%; height:300px; border:1px solid #ccc;" class="mb-3"></div>
         </div>
 
         <div class="mb-3">
@@ -115,7 +55,6 @@
           <select id="payment_method" name="payment_method" class="form-select" required>
             <option value="">Select Payment Method</option>
             <option value="CASH">Cash</option>
-            <!-- You can add more options here if needed -->
           </select>
         </div>
 
@@ -123,7 +62,7 @@
       </form>
     </div>
 
-    <!-- RIGHT: Cart Summary -->
+    <!-- Cart Summary (unchanged) -->
     <div class="col-md-5">
       <div class="card shadow-sm p-4">
         <h5 class="mb-3">Order Summary</h5>
@@ -153,7 +92,98 @@
         </div>
       </div>
     </div>
+
   </div>
 </div>
+
+<!-- Google Maps + Address logic -->
+<script>
+  let autocomplete;
+  let map;
+  let marker;
+
+  function initAutocomplete() {
+    const input = document.getElementById('autocomplete');
+    if (!input) return;
+
+    autocomplete = new google.maps.places.Autocomplete(input);
+    autocomplete.setFields(['formatted_address', 'geometry']);
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (!place.geometry) return;
+      const latlng = place.geometry.location;
+      updateLocationFields(latlng.lat(), latlng.lng());
+      renderMap(latlng);
+    });
+
+    // ✅ Set up the buttons after API is ready
+    const btnUseLocation = document.getElementById('btnUseLocation');
+    const btnManualAddress = document.getElementById('btnManualAddress');
+
+    if (btnUseLocation) {
+      btnUseLocation.addEventListener('click', () => {
+        useCurrentLocation();
+      });
+    }
+
+    if (btnManualAddress) {
+      btnManualAddress.addEventListener('click', () => {
+        document.getElementById('manualAddressSection').style.display = 'block';
+        document.getElementById('addressChoice').style.display = 'none';
+      });
+    }
+  }
+
+  function updateLocationFields(lat, lng) {
+    document.getElementById('latitude').value = lat;
+    document.getElementById('longitude').value = lng;
+  }
+
+  function renderMap(latlng) {
+    if (!map) {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: latlng,
+        zoom: 15
+      });
+      marker = new google.maps.Marker({
+        position: latlng,
+        map: map
+      });
+    } else {
+      map.setCenter(latlng);
+      marker.setPosition(latlng);
+    }
+  }
+
+  function useCurrentLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const latlng = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: latlng }, (results, status) => {
+          if (status === 'OK' && results[0]) {
+            document.getElementById('autocomplete').value = results[0].formatted_address;
+            updateLocationFields(latlng.lat, latlng.lng);
+            renderMap(latlng);
+            document.getElementById('manualAddressSection').style.display = 'block';
+            document.getElementById('addressChoice').style.display = 'none';
+          }
+        });
+      }, err => {
+        alert("Please allow location access to use this feature.");
+        document.getElementById('manualAddressSection').style.display = 'block';
+        document.getElementById('addressChoice').style.display = 'none';
+      });
+    } else {
+      alert("Geolocation is not supported by your browser");
+    }
+  }
+</script>
+
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD7vHyAIqo-jgZC82kJMrZ79Wks-Tg6PTg&libraries=places&callback=initAutocomplete" async defer></script>
 
 {% endblock %}

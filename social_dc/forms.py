@@ -33,9 +33,10 @@ class AddressForm(forms.ModelForm):
     class Meta:
         model = SalesAddressTable
         fields = [
-            'block_number', 'lot_number', 'house_number', 'unit_number',
-            'street_name', 'subdivision', 'barangayid', 'postal_code', 'city_municipalityid',
-            'provinceid', 'regionid', 'countryid', 'delivery_instructions'
+            'full_address',
+            'latitude',
+            'longitude',
+            'delivery_instructions',
         ]
 
 class CombinedStatusForm(forms.Form):

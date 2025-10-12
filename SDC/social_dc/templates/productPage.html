@@ -3,6 +3,8 @@
 {% block title %}{{ product.productname }}{% endblock %}
 
 {% block content %}
+{% include 'includes/toast.html' %}
+
 <div class="container py-5">
     <!-- Product Title -->
     <div class="row mb-4">
@@ -81,7 +83,7 @@
                 <input type="hidden" id="selectedProductID" value="{{ product.productid }}">
 
                 <!-- Submit -->
-                <button type="submit" class="btn btn-success w-100 mt-3">Add to Cart</button>
+                <button type="submit" class="btn btn-success w-100 mt-3" id="submitBtn" disabled>Add to Cart</button>
             </div>
         </div>
     </form>
@@ -89,54 +91,68 @@
 
 <!-- JavaScript -->
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const productRadios = document.querySelectorAll('input[name="productID"]');
-        const sizeRadios = document.querySelectorAll('input[name="sizeID"]');
-        const hiddenImage = document.getElementById('selectedImageURL');
-        const hiddenProduct = document.getElementById('selectedProductID');
-        const mainImage = document.getElementById('mainProductImage');
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('addToCartForm');
+    const productRadios = form.querySelectorAll('input[name="productID"]');
+    const sizeRadios = form.querySelectorAll('input[name="sizeID"]');
+    const submitBtn = document.getElementById('submitBtn');
+    const hiddenImage = document.getElementById('selectedImageURL');
+    const hiddenProduct = document.getElementById('selectedProductID');
+    const mainImage = document.getElementById('mainProductImage');
 
-        function updateActive(radioGroup) {
-            radioGroup.forEach(r => r.closest('label').classList.remove('active'));
-            const selected = document.querySelector(`input[name="${radioGroup[0].name}"]:checked`);
-            if (selected) {
-                selected.closest('label').classList.add('active');
-            }
+    // 🧠 Activate label styling
+    function updateActive(radioGroup) {
+        radioGroup.forEach(r => r.closest('label').classList.remove('active'));
+        const selected = form.querySelector(`input[name="${radioGroup[0].name}"]:checked`);
+        if (selected) {
+            selected.closest('label').classList.add('active');
         }
+    }
 
-        function updateVariantSelection() {
-            const selectedColor = document.querySelector('input[name="colorID"]:checked');
-            if (selectedColor) {
-                const newImage = selectedColor.dataset.image;
-                const newProductId = selectedColor.dataset.product;
+    // 🧠 Update hidden inputs and main image
+    function updateVariantSelection() {
+        const selectedColor = form.querySelector('input[name="productID"]:checked');
+        if (selectedColor) {
+            const newImage = selectedColor.dataset.image;
+            const newProductId = selectedColor.value;
 
-                hiddenImage.value = newImage;
-                hiddenProduct.value = newProductId;
-                mainImage.src = newImage;
+            hiddenImage.value = newImage;
+            hiddenProduct.value = newProductId;
+            mainImage.src = newImage;
 
-                // ⚠️ Update form action with correct productID
-                document.getElementById('addToCartForm').action = `/add-to-cart/${newProductId}/`;
-            }
+            {% comment %} form.action = `/add-to-cart/${newProductId}/`; {% endcomment %}
         }
+    }
 
-        // Initial state setup
-        if (productRadios.length) {
+    // ✅ Enable or disable the submit button
+    function checkSelections() {
+        const sizeSelected = form.querySelector('input[name="sizeID"]:checked');
+        const colorSelected = form.querySelector('input[name="productID"]:checked');
+        submitBtn.disabled = !(sizeSelected && colorSelected);
+    }
+
+    // 🧠 Listen for changes
+    productRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
             updateActive(productRadios);
             updateVariantSelection();
-        }
-        if (sizeRadios.length) updateActive(sizeRadios);
-
-        // Event listeners
-        productRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
-                updateActive(productRadios);
-                updateVariantSelection();
-            });
-        });
-
-        sizeRadios.forEach(radio => {
-            radio.addEventListener('change', () => updateActive(sizeRadios));
+            checkSelections();
         });
     });
+
+    sizeRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            updateActive(sizeRadios);
+            checkSelections();
+        });
+    });
+
+    // ✅ Initial check after DOM is ready
+    updateActive(productRadios);
+    updateActive(sizeRadios);
+    updateVariantSelection();
+    checkSelections();
+});
 </script>
+
 {% endblock %}

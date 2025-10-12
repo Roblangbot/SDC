@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'social_dc.apps.SocialDcConfig'
+    'social_dc.apps.SocialDcConfig',
+    'widget_tweaks',
 ]
 
 MIDDLEWARE = [
@@ -78,7 +79,7 @@ WSGI_APPLICATION = 'SDC.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'sdcnew',  # Your database name
+        'NAME': 'sdc',  # Your database name
         'USER': 'root',   # Default MySQL user in XAMPP
         'PASSWORD': '',   # Default password in XAMPP (empty by default)
         'HOST': '127.0.0.1',  # Host is localhost
@@ -133,3 +134,12 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 # Optional: session cookie duration in seconds
 SESSION_COOKIE_AGE = 3600  # 1 hour, default is 300 seconds (5 minutes)
+
+# Email settings for sending contact form submissions
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'ceejhaysuriaga@gmail.com'
+EMAIL_HOST_PASSWORD = 'hzgo afxy irnk nunb'  # Use App Password, NOT your real Gmail password
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

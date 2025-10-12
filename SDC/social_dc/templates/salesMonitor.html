@@ -1,70 +1,105 @@
 {% extends 'adminBase.html' %}
 {% load static %}
-{% block title %} Sales Monitoring {% endblock %}
-{% block content %}
+{% load custom_filters %}
 
-    <div class="container-fluid p-0">
-        <main class="flex-grow-1 overflow-auto p-4 p-md-5">
-            <div class="container py-5">
-                {% if sales_trend %}
+{% block title %} Sales Monitoring {% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <main class="flex-grow-1 overflow-auto p-4 p-md-5">
+        <div class="container py-5">
+
+            <!-- AI Insight -->
+            {% if sales_trend %}
                 <div class="alert alert-info mt-4">
                     AI Insight: {{ sales_trend }}
                 </div>
-                {% endif %}
-            
-                {% if outlier_periods %}
+            {% endif %}
+
+            {% if outlier_periods %}
                 <div class="alert alert-warning mt-4">
                     Unusual sales activity detected in: {{ outlier_periods|join:", " }}
                 </div>
+            {% endif %}
+
+            <!-- Timeframe Toggle -->
+            <form method="get" class="mb-4">
+                <button type="submit" name="timeframe" value="month" class="btn btn-primary">Monthly Sales</button>
+                <button type="submit" name="timeframe" value="day" class="btn btn-secondary">Daily Sales</button>
+            </form>
+
+            <!-- Key Metrics: AOV & CLTV -->
+            <div class="row mb-5">
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">Average Order Value</h5>
+                            <p class="card-text fs-4">₱ {{ average_order_value }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% if cltv_labels %}
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">Top Customers by CLTV</h5>
+                            <ul class="list-group list-group-flush">
+                                {% for name, value in cltv_labels|zip_lists:cltv_totals %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        {{ name }}
+                                        <span class="badge bg-success rounded-pill">₱ {{ value }}</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
                 {% endif %}
-                
-                <!-- Timeframe Switcher (Daily/Monthly) -->
-                <form method="get" class="mb-4">
-                    <button type="submit" name="timeframe" value="month" class="btn btn-primary">Monthly Sales</button>
-                    <button type="submit" name="timeframe" value="day" class="btn btn-secondary">Daily Sales</button>
-                </form>
-            
-                <div class="contianer-fluid d-flex m-5">
-                    <!-- Most Bought Color -->
-                    {% comment %} <div class="container w-50">
-                        <h2 class="mb-4">Most Bought Color</h2>
-                        <canvas id="colorChart"></canvas>
-                    </div> {% endcomment %}
-                
-                        <!-- Most Bought Product and Color Combo -->
-                    <div class="container w-50">
-                        <h2 class="mt-5">Most Bought Shirt and Color</h2>
-                        <canvas id="comboChart"></canvas>
-                    </div>
-            
+            </div>
+
+            <!-- Product and Color Combo -->
+            <div class="container w-75 my-5">
+                <h3>Most Bought Product and Color Combo</h3>
+                <canvas id="comboChart"></canvas>
+            </div>
+
+            <!-- Design and Size -->
+            <div class="row my-5">
+                <div class="col-md-6">
+                    <h3>Most Bought Design</h3>
+                    <canvas id="designChart"></canvas>
                 </div>
-            
-                <div class="continer-fluid d-flex m-5">
-                    <!-- Most Bought Design -->
-                    <div class="container w-50">
-                        <h2 class="mt-5">Most Bought Design</h2>
-                        <canvas id="designChart"></canvas>
-                    </div>
-                
-                    <!-- Most Bought Size -->
-                    <div class="container w-50">
-                        <h2 class="mt-5">Most Bought Size</h2>
-                        <canvas id="sizeChart"></canvas>
-                    </div>
-                </div>
-            
-            
-                <!-- Total Sales -->
-                <div class="container w-50 m-5">
-                    <h2 class="mt-5">Total Sales</h2>
-                    <canvas id="salesChart"></canvas>
+                <div class="col-md-6">
+                    <h3>Most Bought Size</h3>
+                    <canvas id="sizeChart"></canvas>
                 </div>
             </div>
-        </main>
-    </div>
 
+            <!-- Sales Over Time -->
+            <div class="container w-75 my-5">
+                <h3>Sales Over Time</h3>
+                <canvas id="salesChart"></canvas>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Function to render a bar chart
+    const renderPie = (id, labels, data) => {
+        new Chart(document.getElementById(id), {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: ['#36a2eb', '#ff6384', '#ffcd56', '#4bc0c0', '#9966ff']
+                }]
+            }
+        });
+    };
+
     const renderBar = (id, labels, data, label) => {
         new Chart(document.getElementById(id), {
             type: 'bar',
@@ -79,21 +114,6 @@
         });
     };
 
-    // Function to render a pie chart
-    const renderPie = (id, labels, data) => {
-        new Chart(document.getElementById(id), {
-            type: 'pie',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: data,
-                    backgroundColor: ['#36a2eb', '#ff6384', '#ffcd56', '#4bc0c0', '#9966ff']
-                }]
-            }
-        });
-    };
-
-    // Function to render a line chart
     const renderLine = (id, labels, data) => {
         new Chart(document.getElementById(id), {
             type: 'line',
@@ -104,17 +124,16 @@
                     data: data,
                     fill: false,
                     borderColor: 'teal',
-                    tension: 0.1
+                    tension: 0.3
                 }]
             }
         });
     };
 
-    // Render all charts
+    // Render Charts using data from Django context
     renderPie('designChart', {{ design_labels|safe }}, {{ design_totals|safe }});
     renderPie('sizeChart', {{ size_labels|safe }}, {{ size_totals|safe }});
-    renderBar('comboChart', {{ combo_labels|safe }}, {{ combo_totals|safe }}, 'Product/Color');
+    renderBar('comboChart', {{ combo_labels|safe }}, {{ combo_totals|safe }});
     renderLine('salesChart', {{ sales_labels|safe }}, {{ sales_totals|safe }});
 </script>
-
 {% endblock %}

@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %} Home Page {% endblock %} 
+{% block title %} Social District Clothing {% endblock %} 
 {% block content %}
   <section class="hero-section">
     <video class="video-bg" autoplay muted loop playsinline>
-      <source src="{% static 'videos/sdcHomePage.mov' %}" type="video/mp4">
+      <source src="{% static 'videos/sdcHomepage.mov' %}" type="video/mp4">
       Your browser does not support the video tag.
     </video>
 
@@ -20,14 +20,16 @@
       <div class="bestSeller-title">
         <h2>BEST SELLER</h2>
       </div>
+
       <div class="container-homeContent">
+        {% for product in best_selling_products %}
         <div class="item-container">
           <div>
             <div>
-              <h3>ITEM 1</h3>
+              <h3>{{ product.prodnameid.name }}</h3>
             </div>
             <div class="container-item-image">
-              <img class="item" src="{% static 'images/HATERS TSHIRT 1.png' %}" alt="Item 1">
+              <img class="item" src="{{ product.productimage }}" alt="{{ product.prodnameid.name }}">
             </div>
             <div class="contianer-auto d-flex">
               <a href="#" class="btn bg-primary w-50 p-2 me-4 mt-2">
@@ -39,42 +41,9 @@
             </div>
           </div>
         </div>
-        <div class="item-container">
-          <div>
-            <div>
-              <h3>ITEM 2</h3>
-            </div>
-            <div class="container-item-image">
-              <img class="item" src="{% static 'images/HATERS TSHIRT.png' %}" alt="Item 1">
-            </div>
-            <div class="contianer-auto d-flex">
-              <a href="#" class="btn bg-primary w-50 p-2 me-4 mt-2">
-                <button type="button" class="btn bg-primary">Add to Cart</button>
-              </a>
-              <a href="#" class="btn bg-secondary w-50 p-2 ms-4 mt-2">
-                <button type="button" class="btn bg-secondary">Buy Now</button>
-              </a>
-            </div>
-          </div>
-        </div>
-        <div class="item-container">
-          <div>
-            <div>
-              <h3>ITEM 3</h3>
-            </div>
-            <div class="container-item-image">
-              <img class="item" src="{% static 'images/SDC COFFEE LOVER.png' %}" alt="Item 1">
-            </div>
-            <div class="contianer-auto d-flex">
-              <a href="#" class="btn bg-primary w-50 p-2 me-4 mt-2">
-                <button type="button" class="btn bg-primary">Add to Cart</button>
-              </a>
-              <a href="#" class="btn bg-secondary w-50 p-2 ms-4 mt-2">
-                <button type="button" class="btn bg-secondary">Buy Now</button>
-              </a>
-            </div>
-          </div>
-        </div>
+        {% empty %}
+        <p class="text-light">No best sellers available right now.</p>
+        {% endfor %}
       </div>
     </div>
 {% endblock %} 

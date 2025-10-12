@@ -9,13 +9,13 @@
   </div>
 
   <div class="container">
-    <div class="row">
+    <div class="">
       
       <!-- FILTER SIDEBAR -->
-      <div class="col-md-3">
-        <div class="sticky-top p-3 border rounded bg-light">
+      <div class="col-md-3 w-100">
+        <div class="sticky-top p-3 rounded d-flex justify-content-end">
           <h4 class="mb-3">Filter</h4>
-          <form method="get" class="d-flex flex-column gap-3">
+          <form method="get" class="d-flex flex-column">
       
             <!-- New Filters -->
               <select name="filter" class="form-select" onchange="this.form.submit()">
@@ -31,7 +31,7 @@
       </div>
 
       <!-- PRODUCT GRID -->
-      <div class="col-md-9">
+      <div class="col-md-12">
         <div class="row">
           {% for product in page_obj %}
           <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
@@ -41,7 +41,7 @@
                   src="{{ product.productimage }}" 
                   class="card-img-top img-fluid" 
                   loading="lazy" 
-                  style="height: 220px; object-fit: cover;" 
+                  style="height: 300px; object-fit: cover;" 
                   alt="{{ product.productname }}">
                 <div class="card-body">
                   <h6 class="card-title text-truncate">{{ product.productname }}</h6>

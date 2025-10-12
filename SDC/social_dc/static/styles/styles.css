@@ -216,3 +216,18 @@ table, th, td{
 .quantityUpdate {
   -moz-appearance: textfield;
 }
+
+.cartImg{
+    width: 45px; 
+}
+
+.itemCountCart{
+    border-radius: 100%;
+    background-color: red;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    position: absolute;
+    right: 5rem;
+    top: 1.5rem;
+}

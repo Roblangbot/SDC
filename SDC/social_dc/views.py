@@ -7,15 +7,18 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import send_mail, BadHeaderError, EmailMessage
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponseBadRequest, HttpResponseNotFound, JsonResponse, HttpResponseRedirect
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Avg, Q, OuterRef, Subquery
 from django.db.models.functions import TruncMonth, TruncDay
+from calendar import monthrange
 from django.utils import timezone
-from .models import (ProductTable, PriceTable, SizeTable, ColorTable, OrderTable, SalesTable, ProdNameTable)
-from .forms import ProductForm
+from datetime import timedelta
+from .models import (ProductTable, CountryTable, PaystatTable, ProdNameTable, PriceTable, ItemStatusTable, SizeTable, ColorTable, OrderTable, SalesTable, PaymentTable, CustomerTable, SalesAddressTable, RegionTable, ProvinceTable, CityMunicipalityTable, BarangayTable)
+from .forms import ProductForm, CombinedStatusForm, ProdNameForm
 from .utils import enrich_cart
+import statistics
 from django.core.paginator import Paginator
 
 
@@ -72,8 +75,28 @@ def admin_logout(request):
 
 def home(request):
     cart_items, total_price = enrich_cart(request.session)
+        # Get top 3 best selling products by total quantity
+        # Step 1: Aggregate total quantity sold per product (Top 3)
+    best_seller_data = (
+        OrderTable.objects
+        .values('productid')  # Group by product ID
+        .annotate(total_sold=Sum('quantity'))  # Sum of all quantities per product
+        .order_by('-total_sold')[:3]  # Take top 3
+    )
 
-    return render(request, 'index.html', {'cart_items': cart_items, 'total_price': total_price})
+    # Step 2: Extract product IDs from the above result
+    best_seller_ids = [item['productid'] for item in best_seller_data]
+
+    # Step 3: Get full ProductTable objects using the IDs
+    best_selling_products_queryset = ProductTable.objects.filter(productid__in=best_seller_ids)
+
+    # Step 4: Sort the products to match the order in best_seller_data
+    best_selling_products = sorted(
+        best_selling_products_queryset,
+        key=lambda product: best_seller_ids.index(product.productid)
+    )
+
+    return render(request, 'index.html', {'cart_items': cart_items, 'total_price': total_price, 'best_selling_products': best_selling_products})
 
 def faq(request):
     cart_items, total_price = enrich_cart(request.session)
@@ -87,23 +110,33 @@ def aboutus(request):
 
 def contacts(request):
     cart_items, total_price = enrich_cart(request.session)
-    
+
     if request.method == 'POST':
-        email = request.POST.get('email')
+        sender_email = request.POST.get('email')
         message = request.POST.get('message')
 
         subject = 'New Contact Form Submission'
-        body = f"From: {email}\n\nMessage:\n{message}"
+        body = f"Message from: {sender_email}\n\n{message}"
 
         try:
-            send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, ['yourdestination@example.com'])
+            email = EmailMessage(
+                subject=subject,
+                body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,  # ✅ Always your verified email
+                to=[settings.DEFAULT_FROM_EMAIL],        # ✅ Sent to your inbox
+                reply_to=[sender_email]                  # ✅ Reply goes to visitor
+            )
+            email.send()
             messages.success(request, "Your message has been sent successfully!")
-        except:
-            messages.error(request, "Something went wrong. Please try again.")
+        except Exception as e:
+            messages.error(request, f"Something went wrong. {e}")
 
-        return redirect('contact')  # or redirect to a thank-you page
+        return redirect('contacts')
 
-    return render(request, 'contacts.html', {'cart_items': cart_items, 'total_price': total_price})
+    return render(request, 'contacts.html', {
+        'cart_items': cart_items,
+        'total_price': total_price,
+    })
 
 def checkout(request):
     cart_items = request.session.get('cart', [])
@@ -111,15 +144,95 @@ def checkout(request):
         messages.warning(request, "Your cart is empty.")
         return redirect('product')
 
-    total_price = 0
-    for item in cart_items:
-        item['subtotal'] = int(item['price']) * int(item['quantity'])
-        total_price += item['subtotal']
+    if request.method == "POST":
+        # 1. Get customer info
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        contact_no = request.POST.get('contact_no')
+        email = request.POST.get('email')
 
+        # 2. Create customer
+        customer = CustomerTable.objects.create(
+            firstname=first_name,
+            lastname=last_name,
+            contactno=contact_no,
+            email=email
+        )
+
+        # 3. Create sales record
+        total_price = sum(int(item['price']) * int(item['quantity']) for item in cart_items)
+        status = ItemStatusTable.objects.get(pk=1)
+        sales = SalesTable.objects.create(
+            ordernumber=f"ORD-{timezone.now().strftime('%Y%m%d%H%M%S')}",
+            customerid=customer,
+            total_price=total_price,
+            itemstatusid=status,
+            sales_date=timezone.now().date(),
+            sales_time=timezone.now().time()
+        )
+
+        # 4. Create address (new format)
+        SalesAddressTable.objects.create(
+            salesid=sales,
+            full_address=request.POST.get('full_address'),
+            latitude=request.POST.get('latitude'),
+            longitude=request.POST.get('longitude'),
+            delivery_instructions=request.POST.get('delivery_instructions'),
+            createdat=timezone.now()
+        )
+
+        # 5. Save order items
+        for item in cart_items:
+            try:
+                product = ProductTable.objects.get(pk=item['product_id'])
+                size = SizeTable.objects.get(pk=item['size_id'])
+                price = PriceTable.objects.get(pk=item['price_id'])
+
+                existing_order = OrderTable.objects.filter(
+                    salesid=sales,
+                    productid=product,
+                    sizeid=size
+                ).first()
+
+                if existing_order:
+                    existing_order.quantity += int(item['quantity'])
+                    existing_order.save()
+                else:
+                    OrderTable.objects.create(
+                        salesid=sales,
+                        productid=product,
+                        sizeid=size,
+                        priceid=price,
+                        quantity=int(item['quantity']),
+                    )
+
+            except Exception as e:
+                print(f"❌ Error saving item '{item['product_name']}': {e}")
+
+        # 6. Save payment
+        paystat = PaystatTable.objects.get(pk=1)
+        PaymentTable.objects.create(
+            salesid=sales,
+            mop=request.POST.get('payment_method'),
+            date=timezone.now().date(),
+            time=timezone.now().time(),
+            paystatid=paystat,
+        )
+
+        # 7. Clear cart
+        request.session['cart'] = []
+        return redirect('order_success')
+
+    # For GET request, we no longer need address dropdowns
+    total_price = sum(int(item['price']) * int(item['quantity']) for item in cart_items)
     return render(request, 'checkout.html', {
         'cart_items': cart_items,
-        'total_price': total_price
+        'total_price': total_price,
     })
+
+def order_success(request):
+    return render(request, 'success.html')
+
 
 def product(request):
     # --- FILTER HANDLING ---
@@ -137,9 +250,23 @@ def product(request):
         # Default query: only show black variant
         products = ProductTable.objects.filter(colorid=black_color).select_related("prodnameid", "colorid")
 
-        # Apply filters dynamically
         if filter_type == "best_seller":
-            products = products.annotate(order_count=Count("ordertable")).order_by("-order_count")[:10]
+            # Step 1: Aggregate total quantity sold per product (top 10)
+            best_seller_data = (
+                OrderTable.objects
+                .values('productid')
+                .annotate(total_sold=Sum('quantity'))
+                .order_by('-total_sold')[:10]
+            )
+
+            # Step 2: Extract product IDs
+            best_seller_ids = [item['productid'] for item in best_seller_data]
+
+            # Step 3: Fetch full ProductTable objects matching those IDs
+            products = ProductTable.objects.filter(productid__in=best_seller_ids)
+
+            # Step 4: Sort them to match the best-selling order
+            products = sorted(products, key=lambda p: best_seller_ids.index(p.productid))
 
         elif filter_type == "complete_color":
             # Products that have all color variants
@@ -255,9 +382,11 @@ def add_to_cart(request):
             'product_id': product.productid,
             'product_name': product.prodnameid.name,
             'size': size.size,
+            'size_id': size.sizeid,
             'color': product.colorid.colorname,
             'quantity': quantity,
             'price': product.priceid.amount,
+            'price_id': product.priceid.priceid,                 # add price_id here
             'image_url': product.productimage,
         }
 
@@ -274,8 +403,19 @@ def add_to_cart(request):
         request.session['cart'] = cart
         request.session.modified = True
 
-        return redirect('productPage', productID=product.productid)
+                # Count the total number of items in the cart (sum of quantities)
+        total_item_count = sum(int(item['quantity']) for item in cart)
+        
+        # Option 1: Store the total count in the session
+        request.session['total_item_count'] = total_item_count
 
+        # Option 2: Store the total count in a cookie (e.g., for cross-session tracking)
+        response = redirect('productPage', productID=product.productid)
+        response.set_cookie('item_count', total_item_count, max_age=3600)  # expires in 1 hour
+
+        messages.success(request, "Item successfully added to cart!")
+        return response
+    
     return HttpResponseBadRequest("Invalid method.")
 
 
@@ -326,25 +466,138 @@ def cart(request):
 
 @login_required(login_url='adminLogin')
 def adminDashboard(request):
-    return render(request, 'adminDashboard.html')
+    today = date.today()
+    start_date = today - timedelta(days=29)  # last 30 days including today
+    end_date = today
+
+    # Fetch orders and sales in current month
+    orders = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))
+    sales = SalesTable.objects.filter(sales_date__range=(start_date, end_date))
+
+    # 1. Sales Over Time (Daily Aggregation)
+    sales_time_data = sales.annotate(day=TruncDay('sales_date')) \
+        .values('day') \
+        .annotate(total_sales=Sum('total_price')) \
+        .order_by('day')
+
+    sales_labels = [item['day'].strftime('%d %b') if item['day'] else '' for item in sales_time_data]
+    sales_totals = [item['total_sales'] or 0 for item in sales_time_data]
+
+    # 2. Recent Orders (Latest 4)
+    recent_orders_qs = orders.select_related(
+        'productid__prodnameid',
+        'productid__colorid',
+        'salesid__customerid'
+    ).order_by('-salesid__sales_date')[:4]
+
+    recent_orders = []
+    for o in recent_orders_qs:
+        recent_orders.append({
+            'order_id': o.salesid.salesid,
+            'product_name': o.productid.prodnameid.name,
+            'customer_name': o.salesid.customerid.firstname,
+            'time_diff': o.salesid.sales_date,  # Format in template if needed
+            'amount': o.quantity * getattr(o.productid.priceid, 'amount', 0),
+            'image_url': getattr(o.productid, 'productimage', ''),  # safer access
+        })
+
+    # 3. Top-Selling Products
+    top_products_data = (
+        orders
+        .values('productid', 'productid__prodnameid__name', 'productid__productimage', 'productid__priceid__amount')
+        .annotate(total_qty=Sum('quantity'))
+        .order_by('-total_qty')[:5]
+    )
+
+    # Status badge mapping
+    badge_map = {
+        'Delivered': 'text-bg-success',
+        'Pending': 'text-bg-warning',
+        'Cancelled': 'text-bg-danger'
+    }
+
+    top_products = []
+    for product in top_products_data:
+        # Get latest order's item status for this product in current month
+        latest_order = OrderTable.objects.filter(
+            productid=product['productid'],
+            salesid__sales_date__range=(start_date, end_date)
+        ).order_by('-salesid__sales_date').select_related('salesid__itemstatusid').first()
+
+        status = getattr(latest_order.salesid.itemstatusid, 'itemstat', 'Unknown') if latest_order else 'Unknown'
+        badge_class = badge_map.get(status, 'text-bg-secondary')
+
+        top_products.append({
+            'name': product['productid__prodnameid__name'],
+            'image_url': product.get('productid__productimage', ''),
+            'quantity_sold': product['total_qty'],
+            'price': product.get('productid__priceid__amount', 0),
+            'status': status,
+            'badge_class': badge_class,
+        })
+
+    # 4. Dashboard Metrics
+    total_sales = sales.aggregate(total=Sum('total_price'))['total'] or 0
+    new_orders = orders.count()
+    total_customers = sales.values('customerid').distinct().count()
+
+    # Context
+    context = {
+        'sales_labels': sales_labels,
+        'sales_totals': sales_totals,
+        'recent_orders': recent_orders,
+        'top_products': top_products,
+        'total_sales': round(total_sales, 2),
+        'new_orders': new_orders,
+        'total_customers': total_customers,
+        'start_date': start_date,
+        'end_date': end_date,
+    }
+
+    return render(request, 'adminDashboard.html', context)
 
 @login_required(login_url='adminLogin')
 def addProduct(request):
     if request.method == 'POST':
-        product_form = ProductForm(request.POST)
+        # Create or Edit Product
+        product_form = ProductForm(request.POST, request.FILES)
+        product_id = request.POST.get('productid')
 
-        if product_form.is_valid():
-            product_form.save()
-            return redirect('addProduct')
+        if product_id:  # Editing an existing product
+            product = get_object_or_404(ProductTable, productid=product_id)
+            product_form = ProductForm(request.POST, request.FILES, instance=product)
+            if product_form.is_valid():
+                product_form.save()
+                return redirect('addProduct')  # Redirect after saving
+        elif 'delete' in request.POST:  # Deleting a product
+            product_id = request.POST.get('delete')
+            product = get_object_or_404(ProductTable, productid=product_id)
+            product.delete()
+            return redirect('addProduct')  # Redirect after deletion
+        else:  # Creating a new product
+            if product_form.is_valid():
+                product_form.save()
+                return redirect('addProduct')  # Redirect after saving
+
     else:
         product_form = ProductForm()
 
     products = ProductTable.objects.all()
 
     context = {
-        'products' : products,
-        'product_form': product_form
+        'product_form': product_form,
+        'products': products,
+        'edit_mode': False,  # Default is not in edit mode
     }
+
+    # Check if we are editing a product
+    product_id = request.GET.get('edit')  # Check URL for 'edit' parameter
+    if product_id:
+        product = get_object_or_404(ProductTable, productid=product_id)
+        product_form = ProductForm(instance=product)
+        context['product_form'] = product_form
+        context['edit_mode'] = True  # Now we're in edit mode
+        context['product_id'] = product_id  # Pass product ID to the template
 
     return render(request, 'addProduct.html', context)
 
@@ -361,10 +614,6 @@ def orderedItems(request):
     return render(request, 'orderItems.html', context)
 
 @login_required(login_url='adminLogin')
-def paymentAss(request):
-    return render(request, 'paymentAss.html')
-
-@login_required(login_url='adminLogin')
 def inventory(request):
     return render(request, 'inventory.html')
 
@@ -373,99 +622,231 @@ def analysis(request):
     return render(request, 'analysis.html')
 
 @login_required(login_url='adminLogin')
-def variantCreation(request):
+def newProductName(request):
+    edit_prodname = None
+    form = None
 
+    # Check if editing (GET param 'edit')
+    edit_id = request.GET.get('edit')
+    if edit_id:
+        edit_prodname = get_object_or_404(ProdNameTable, pk=edit_id)
+        form = ProdNameForm(instance=edit_prodname)
+    else:
+        form = ProdNameForm()
 
-    return render(request, 'variantCreation.html')
+    if request.method == 'POST':
+        # Delete request
+        if 'delete_prodnameid' in request.POST:
+            prodname = get_object_or_404(ProdNameTable, pk=request.POST['delete_prodnameid'])
+            prodname.delete()
+            messages.success(request, "Product name deleted.")
+            return redirect('newProductName')
+
+        # Update or Create request
+        prodname_id = request.POST.get('prodnameid')
+        if prodname_id:
+            # Update
+            prodname = get_object_or_404(ProdNameTable, pk=prodname_id)
+            form = ProdNameForm(request.POST, instance=prodname)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Product name updated.")
+                return redirect('newProductName')
+        else:
+            # Create
+            form = ProdNameForm(request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Product name added.")
+                return redirect('newProductName')
+
+    product_names = ProdNameTable.objects.all().order_by('-prodnameid')
+    return render(request, 'newProductName.html', {
+        'form': form,
+        'product_names': product_names,
+        'edit_prodname': edit_prodname,
+    })
+
+@login_required(login_url='adminLogin')
+def salesManagement(request):
+    search_query = request.GET.get('search', '')
+
+    sales_qs = SalesTable.objects.all() \
+        .select_related('customerid', 'itemstatusid') \
+        .order_by('-sales_date', '-sales_time')
+
+    if search_query:
+        # Search by order number or customer first/last name (case-insensitive)
+        sales_qs = sales_qs.filter(
+            Q(ordernumber__icontains=search_query) |
+            Q(customerid__firstname__icontains=search_query) |
+            Q(customerid__lastname__icontains=search_query)
+        )
+
+    paginator = Paginator(sales_qs, 10)  # 10 sales per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Get IDs of sales in current page
+    sales_ids = list(page_obj.object_list.values_list('salesid', flat=True))
+
+    # Get payments related to these sales
+    payments = PaymentTable.objects.filter(salesid__in=sales_ids).select_related('paystatid')
+
+    # Prepare a dict of payments keyed by salesid (assuming one payment per sale)
+    payment_dict = {}
+    for payment in payments:
+        payment_dict[payment.salesid_id] = payment  # map sale id to payment object
+
+    # Prepare combined forms for each sale
+    combined_forms = {}
+    for sale in page_obj.object_list:
+        payment = payment_dict.get(sale.salesid)
+        if payment:
+            initial_data = {
+                'itemstatusid': sale.itemstatusid_id,
+                'paystatid': payment.paystatid_id,
+                'salesid': sale.salesid,
+                'paymentid': payment.paymentid,
+            }
+            combined_forms[sale.salesid] = CombinedStatusForm(initial=initial_data)
+        else:
+            # If no payment found, just fill itemstatus and salesid
+            initial_data = {
+                'itemstatusid': sale.itemstatusid_id,
+                'salesid': sale.salesid,
+                # paymentid is required in the form, so you might want to handle this case accordingly
+            }
+            combined_forms[sale.salesid] = CombinedStatusForm(initial=initial_data)
+
+    return render(request, 'salesManagement.html', {
+        'page_obj': page_obj,
+        'payments': payments,
+        'combined_forms': combined_forms,  # pass combined forms instead of separate forms
+        'search_query': search_query,
+    })
+
+@login_required(login_url='adminLogin')
+def update_statuses(request):
+    if request.method == 'POST':
+        form = CombinedStatusForm(request.POST)
+        if form.is_valid():
+            salesid = form.cleaned_data.get('salesid')
+            paymentid = form.cleaned_data.get('paymentid')
+            itemstatusid = form.cleaned_data.get('itemstatusid')
+            paystatid = form.cleaned_data.get('paystatid')
+
+            if salesid and itemstatusid:
+                sale = get_object_or_404(SalesTable, pk=salesid)
+                sale.itemstatusid = itemstatusid
+                sale.save()
+
+            if paymentid and paystatid:
+                payment = get_object_or_404(PaymentTable, pk=paymentid)
+                payment.paystatid = paystatid
+                payment.save()
+
+    return redirect('salesManagement')
 
 # DATA ANALYSIS
 @login_required(login_url='adminLogin')
 def salesMonitor(request):
-    # # Filter April to May 2023
-    # start_date = date(2023, 4, 1)
-    # end_date = date(2023, 5, 31)
+    # Get current date
+    today = date.today()
+    
+    # Get the first and last day of the current month
+    start_date = date(today.year, today.month, 1)
+    end_day = monthrange(today.year, today.month)[1]
+    end_date = date(today.year, today.month, end_day)
 
-    # # Filter order records through sales date
-    # orders_apr_may = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))
-    # sales_apr_may = SalesTable.objects.filter(sales_date__range=(start_date, end_date))
+    # Filter orders and sales within date range
+    orders = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))
+    sales = SalesTable.objects.filter(sales_date__range=(start_date, end_date))
 
-    # # Most Bought Color
-    # color_data = orders_apr_may.values('colorid__colorName') \
-    #     .annotate(total=Sum('quantity')).order_by('-total')
+    # ========== SALES TRENDS ========== #
+    sales_timeframe = request.GET.get('timeframe', 'month')
 
-    # # Most Bought Design (Product)
-    # design_data = orders_apr_may.values('productid__productname') \
-    #     .annotate(total=Sum('quantity')).order_by('-total')
+    if sales_timeframe == 'day':
+        sales_data = sales.annotate(day=TruncDay('sales_date')) \
+                    .values('day').annotate(total=Count('salesid')).order_by('day')
+        timeframe_labels = [s['day'].strftime('%d %b') for s in sales_data]
+    else:
+        sales_data = sales.annotate(month=TruncMonth('sales_date')) \
+                    .values('month').annotate(total=Count('salesid')).order_by('month')
+        timeframe_labels = [s['month'].strftime('%b').upper() for s in sales_data]
 
-    # # Most Bought Size
-    # size_data = orders_apr_may.values('sizeid__size') \
-    #     .annotate(total=Sum('quantity')).order_by('-total')
+    # ========== MOST BOUGHT ANALYTICS ========== #
+    color_data = orders.values('productid__colorid__colorname') \
+                    .annotate(total=Sum('quantity')).order_by('-total')
 
-    # # Most Bought Product + Color Combo
-    # combo_data = orders_apr_may.values('productid__productname', 'colorid__colorName') \
-    #     .annotate(total=Sum('quantity')).order_by('-total')
+    design_data = orders.values('productid__prodnameid__name') \
+                    .annotate(total=Sum('quantity')).order_by('-total')
 
-    # # Get daily or monthly sales based on the request
-    # sales_timeframe = request.GET.get('timeframe', 'month')  # Default to 'month'
+    size_data = orders.values('sizeid__size') \
+                    .annotate(total=Sum('quantity')).order_by('-total')
 
-    # if sales_timeframe == 'day':
-    #     # Group by day if 'day' is selected
-    #     sales_data = sales_apr_may.annotate(day=TruncDay('sales_date')) \
-    #         .values('day').annotate(total=Count('salesid')).order_by('day')
-    #     timeframe_labels = [s['day'].strftime('%d %b') for s in sales_data]  # Display as "Day Month"
-    # else:
-    #     # Group by month if 'month' is selected
-    #     sales_data = sales_apr_may.annotate(month=TruncMonth('sales_date')) \
-    #         .values('month').annotate(total=Count('salesid')).order_by('month')
-    #     timeframe_labels = [s['month'].strftime('%b').upper() for s in sales_data]  # Display as "Month"
+    combo_data = orders.values('productid__prodnameid__name', 'productid__colorid__colorname') \
+                    .annotate(total=Sum('quantity')).order_by('-total')
 
-    # # Context for displaying sales data
-    # context = {
-    #     'color_labels': [c['colorid__colorName'] for c in color_data],
-    #     'color_totals': [c['total'] for c in color_data],
+    # ========== AVERAGE ORDER VALUE (AOV) ========== #
+    aov = sales.aggregate(avg_order=Avg('total_price'))['avg_order'] or 0
 
-    #     'design_labels': [d['productid__productname'] for d in design_data],
-    #     'design_totals': [d['total'] for d in design_data],
+    # ========== CUSTOMER LIFETIME VALUE (CLTV) ========== #
+    cltv_data = sales.values('customerid__firstname') \
+                     .annotate(cltv=Sum('total_price')) \
+                     .order_by('-cltv')[:5]  # top 5 customers
 
-    #     'size_labels': [s['sizeid__size'] for s in size_data],
-    #     'size_totals': [s['total'] for s in size_data],
+    cltv_labels = [entry['customerid__firstname'] for entry in cltv_data]
+    cltv_totals = [entry['cltv'] for entry in cltv_data]
 
-    #     'combo_labels': [f"{c['productid__productname']}/{c['colorid__colorName']}" for c in combo_data[:5]],
-    #     'combo_totals': [c['total'] for c in combo_data[:5]],
+    # ========== SALES TREND ANALYSIS ========== #
+    linearx = np.arange(len(sales_data)).reshape(-1, 1)
+    lineary = np.array([s['total'] for s in sales_data])
+    trend = None
 
-    #     'sales_labels': timeframe_labels,
-    #     'sales_totals': [s['total'] for s in sales_data],
-    # }
+    if len(linearx) >= 2:
+        model = LinearRegression().fit(linearx, lineary)
+        slope = model.coef_[0]
+        if slope > 0:
+            trend = "Increasing trend"
+        elif slope < 0:
+            trend = "Decreasing trend"
+        else:
+            trend = "Stable sales"
 
-    # # Convert dates to numerical values for regression
-    # linearx = np.arange(len(sales_data)).reshape(-1, 1)
-    # lineary = np.array([s['total'] for s in sales_data])
+    # ========== OUTLIER DETECTION ========== #
+    sales_values = list(lineary)
+    outliers = []
 
-    # # Only run if enough data points
-    # trend = None
-    # if len(linearx) >= 2:
-    #     model = LinearRegression().fit(linearx, lineary)
-    #     slope = model.coef_[0]
-    #     if slope > 0:
-    #         trend = "Increasing trend"
-    #     elif slope < 0:
-    #         trend = "Decreasing trend"
-    #     else:
-    #         trend = "Stable sales"
+    if len(sales_values) >= 2:
+        mean = statistics.mean(sales_values)
+        stdev = statistics.stdev(sales_values)
+        outliers = [timeframe_labels[i] for i, val in enumerate(sales_values)
+                    if abs(val - mean) > 2 * stdev]
 
-    # # Add to context
-    # context['sales_trend'] = trend
+    # ========== CONTEXT FOR TEMPLATE ========== #
+    context = {
+        'color_labels': [c['productid__colorid__colorname'] for c in color_data],
+        'color_totals': [c['total'] for c in color_data],
 
-    # sales_values = [s['total'] for s in sales_data]
-    # if len(sales_values) >= 2:
-    #     mean = statistics.mean(sales_values)
-    #     stdev = statistics.stdev(sales_values)
-    #     outliers = [label for i, label in enumerate(timeframe_labels)
-    #                 if abs(sales_values[i] - mean) > 2 * stdev]
+        'design_labels': [d['productid__prodnameid__name'] for d in design_data],
+        'design_totals': [d['total'] for d in design_data],
 
-    #     context['outlier_periods'] = outliers
+        'size_labels': [s['sizeid__size'] for s in size_data],
+        'size_totals': [s['total'] for s in size_data],
 
+        'combo_labels': [f"{c['productid__prodnameid__name']}/{c['productid__colorid__colorname']}" for c in combo_data[:5]],
+        'combo_totals': [c['total'] for c in combo_data[:5]],
 
-    return render(request, 'salesMonitor.html', 
-                #   context
-                  )
+        'sales_labels': timeframe_labels,
+        'sales_totals': list(lineary),
+
+        'average_order_value': round(aov, 2),
+        'cltv_labels': cltv_labels,
+        'cltv_totals': cltv_totals,
+
+        'sales_trend': trend,
+        'outlier_periods': outliers,
+    }
+
+    return render(request, 'salesMonitor.html', context)

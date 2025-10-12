@@ -2,24 +2,26 @@
 {% load static %}
 {% block title %} Contacts {% endblock %} 
 {% block content %}
+{% include 'includes/toast.html' %}
 
     <div class="container">
         <div class="container p-5">
             <h2 class="p-2 text-center fw-bold">CONTACTS US</h2>
         </div>
+
         <div class="container-fluid d-flex mb-5">
             <div class="container">
-                <form method="POST" action="{% url 'contacts' %}">
+                <form method="POST" action="{% url 'contacts' %}" id="contactForm">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label for="FormControlInput1" class="form-label">Email address:</label>
+                        <label for="FormControlInput1" class="form-label">Enter your Email address:</label>
                         <input type="email" name="email" class="form-control" id="FormControlInput1" placeholder="name@example.com" required>
                     </div>
                     <div class="mb-3">
                         <label for="exampleFormControlTextarea1" class="form-label">Email Us:</label>
                         <textarea class="form-control" name="message" id="exampleFormControlTextarea1" rows="3" required></textarea>
                     </div>
-                    <button type="submit" class="btn btn-warning">Submit</button>
+                    <button type="submit" class="btn btn-success" id="submitBtn" disabled>Submit</button>
                 </form>
             </div>
             <div class="container text-center fw-semibold">
@@ -32,5 +34,29 @@
             </div>
         </div>
     </div>
+    <script>
+        const emailInput = document.getElementById('FormControlInput1');
+        const messageInput = document.getElementById('exampleFormControlTextarea1');
+        const submitBtn = document.getElementById('submitBtn');
+
+        function isValidEmail(email) {
+            // Simple email regex, can be improved
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        function toggleSubmitButton() {
+            const email = emailInput.value.trim();
+            const message = messageInput.value.trim();
+
+            submitBtn.disabled = !(email && message && isValidEmail(email));
+        }
+
+        emailInput.addEventListener('input', toggleSubmitButton);
+        messageInput.addEventListener('input', toggleSubmitButton);
+
+        // Initial check
+        toggleSubmitButton();
+    </script>
 
 {% endblock %}

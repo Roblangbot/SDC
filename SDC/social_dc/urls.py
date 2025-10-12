@@ -13,14 +13,22 @@ urlpatterns = [
     path('adminRegistration/', views.adminRegister, name="adminRegister"),
     path('adminLogin/', views.adminLogin, name="adminLogin"),
     path('admin/logout/', views.admin_logout, name='admin_logout'),
-    path('orderedItems/', views.orderedItems, name="orderedItems"),
-    path('paymentAssessment/', views.paymentAss, name="paymentAss"),
-    path('salesMonitoring/', views.salesMonitor, name="salesMonitor"),
-    path('addProduct/', views.addProduct, name="addProduct"),
-    path('variantCreation/', views.variantCreation, name="variantCreation"),
-    path('analysis/', views.analysis, name="analysis"),
+    path('orderSuccess/', views.order_success, name="order_success"),
+
+    # CART FUNCTIONS
     path('add-to-cart/', views.add_to_cart, name='add_to_cart'),
     path('update-cart/<int:product_id>/<str:size>/', views.update_cart_quantity, name='update_cart_quantity'),
     path('remove-from-cart/<int:product_id>/<str:size>/', views.remove_from_cart, name='remove_from_cart'),
+
+    # ADD PRODUCT
+    path('adminProduct/', views.addProduct, name="addProduct"),
     path('adminDashboard/', views.adminDashboard, name='adminDashboard'),
+    path('newProductName/', views.newProductName, name="newProductName"),
+
+    #Admin URLS 
+    path('orderedItems/', views.orderedItems, name="orderedItems"),
+    path('salesMonitoring/', views.salesMonitor, name="salesMonitor"),
+    path('analysis/', views.analysis, name="analysis"),
+    path('salesManagement/', views.salesManagement, name="salesManagement"),
+    path('salesManagement/update-statuses/', views.update_statuses, name='update_statuses'),
 ]

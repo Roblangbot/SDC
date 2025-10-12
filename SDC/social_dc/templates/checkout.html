@@ -1,23 +1,189 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %} Checkout Page {% endblock %} 
-{% block content %}
+{% block title %} Checkout Page {% endblock %}
 
+{% block content %}
 <div class="container py-5">
-  <h2>Checkout</h2>
-  {% for item in cart_items %}
-  <div class="container d-flex">
-    <div class="container-fluid m-5">
-        <img src="{{item.image_url}}" alt="" style="width: 150px;">
+  <div class="row">
+
+    <div class="col-md-7">
+      <h3 class="mb-4">Checkout</h3>
+
+      <form method="POST" action="{% url 'checkout' %}" id="checkoutForm">
+        {% csrf_token %}
+
+        <!-- Contact Information -->
+        <h5 class="mb-3">Contact Information</h5>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <input type="text" name="first_name" class="form-control" placeholder="First Name" required>
+          </div>
+          <div class="col-md-6 mb-3">
+            <input type="text" name="last_name" class="form-control" placeholder="Last Name" required>
+          </div>
+        </div>
+        <div class="mb-3">
+          <input type="email" name="email" class="form-control" placeholder="Email" required>
+        </div>
+        <div class="mb-3">
+          <input type="text" name="contact_no" class="form-control" placeholder="Contact No." required>
+        </div>
+
+        <!-- Delivery Address Section -->
+        <h5 class="mb-3 mt-4">Delivery Address</h5>
+
+        <!-- Modal prompt-like choice -->
+        <div id="addressChoice" class="mb-3">
+          <p>How would you like to set your address?</p>
+          <button type="button" class="btn btn-primary me-2" id="btnUseLocation">Use current location</button>
+          <button type="button" class="btn btn-outline-secondary" id="btnManualAddress">Enter address manually</button>
+        </div>
+
+        <!-- Manual address input & map (hidden initially) -->
+        <div id="manualAddressSection" style="display: none;">
+          <input type="text" name="full_address" id="autocomplete" class="form-control mb-3" placeholder="Type your address">
+          <input type="hidden" name="latitude" id="latitude">
+          <input type="hidden" name="longitude" id="longitude">
+          <div id="map" style="width:100%; height:300px; border:1px solid #ccc;" class="mb-3"></div>
+        </div>
+
+        <div class="mb-3">
+          <textarea name="delivery_instructions" class="form-control" rows="3" placeholder="Delivery instructions (optional)"></textarea>
+        </div>
+        <div class="mb-3">
+          <label for="payment_method" class="form-label">Mode of Payment</label>
+          <select id="payment_method" name="payment_method" class="form-select" required>
+            <option value="">Select Payment Method</option>
+            <option value="CASH">Cash</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-dark w-100">Confirm Order</button>
+      </form>
     </div>
-    <div class="container-fluid m-5">
-        <p>{{ item.product_name }} - {{ item.size }} - {{ item.color }} × {{ item.quantity }} = ₱{{ item.subtotal }}</p>
+
+    <!-- Cart Summary (unchanged) -->
+    <div class="col-md-5">
+      <div class="card shadow-sm p-4">
+        <h5 class="mb-3">Order Summary</h5>
+        {% for item in cart_items %}
+        <div class="d-flex align-items-center mb-3 border-bottom pb-2">
+          <img src="{{ item.image_url }}" alt="{{ item.product_name }}" class="me-3" style="width: 80px; height: auto;">
+          <div>
+            <p class="mb-1 fw-bold">{{ item.product_name }}</p>
+            <small>{{ item.size }} - {{ item.color }}</small><br>
+            <small>Qty: {{ item.quantity }}</small>
+          </div>
+          <div class="ms-auto fw-bold">₱{{ item.subtotal }}</div>
+        </div>
+        {% endfor %}
+        <div class="d-flex justify-content-between mt-3">
+          <span>Subtotal</span>
+          <span>₱{{ total_price }}</span>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>Shipping</span>
+          <span>Calculated at checkout</span>
+        </div>
+        <hr>
+        <div class="d-flex justify-content-between fw-bold">
+          <span>Total</span>
+          <span>₱{{ total_price }}</span>
+        </div>
+      </div>
     </div>
 
   </div>
-  {% endfor %}
-  <h4 class="mt-4">Total: ₱{{ total_price }}</h4>
-  <button class="btn btn-primary mt-3">Confirm Order</button>
 </div>
+
+<!-- Google Maps + Address logic -->
+<script>
+  let autocomplete;
+  let map;
+  let marker;
+
+  function initAutocomplete() {
+    const input = document.getElementById('autocomplete');
+    if (!input) return;
+
+    autocomplete = new google.maps.places.Autocomplete(input);
+    autocomplete.setFields(['formatted_address', 'geometry']);
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (!place.geometry) return;
+      const latlng = place.geometry.location;
+      updateLocationFields(latlng.lat(), latlng.lng());
+      renderMap(latlng);
+    });
+
+    // ✅ Set up the buttons after API is ready
+    const btnUseLocation = document.getElementById('btnUseLocation');
+    const btnManualAddress = document.getElementById('btnManualAddress');
+
+    if (btnUseLocation) {
+      btnUseLocation.addEventListener('click', () => {
+        useCurrentLocation();
+      });
+    }
+
+    if (btnManualAddress) {
+      btnManualAddress.addEventListener('click', () => {
+        document.getElementById('manualAddressSection').style.display = 'block';
+        document.getElementById('addressChoice').style.display = 'none';
+      });
+    }
+  }
+
+  function updateLocationFields(lat, lng) {
+    document.getElementById('latitude').value = lat;
+    document.getElementById('longitude').value = lng;
+  }
+
+  function renderMap(latlng) {
+    if (!map) {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: latlng,
+        zoom: 15
+      });
+      marker = new google.maps.Marker({
+        position: latlng,
+        map: map
+      });
+    } else {
+      map.setCenter(latlng);
+      marker.setPosition(latlng);
+    }
+  }
+
+  function useCurrentLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const latlng = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: latlng }, (results, status) => {
+          if (status === 'OK' && results[0]) {
+            document.getElementById('autocomplete').value = results[0].formatted_address;
+            updateLocationFields(latlng.lat, latlng.lng);
+            renderMap(latlng);
+            document.getElementById('manualAddressSection').style.display = 'block';
+            document.getElementById('addressChoice').style.display = 'none';
+          }
+        });
+      }, err => {
+        alert("Please allow location access to use this feature.");
+        document.getElementById('manualAddressSection').style.display = 'block';
+        document.getElementById('addressChoice').style.display = 'none';
+      });
+    } else {
+      alert("Geolocation is not supported by your browser");
+    }
+  }
+</script>
+
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD7vHyAIqo-jgZC82kJMrZ79Wks-Tg6PTg&libraries=places&callback=initAutocomplete" async defer></script>
 
 {% endblock %}

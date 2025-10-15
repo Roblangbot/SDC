@@ -892,16 +892,22 @@ def update_statuses(request):
             itemstatusid = form.cleaned_data.get('itemstatusid')
             paystatid = form.cleaned_data.get('paystatid')
 
-            if salesid and itemstatusid:
-                sale = get_object_or_404(SalesTable, pk=salesid)
-                sale.itemstatusid = itemstatusid
-                sale.save()
+            try:
+                if salesid and itemstatusid:
+                    sale = get_object_or_404(SalesTable, pk=salesid)
+                    sale.itemstatusid = itemstatusid
+                    sale.save()
 
-            if paymentid and paystatid:
-                payment = get_object_or_404(PaymentTable, pk=paymentid)
-                payment.paystatid = paystatid
-                payment.save()
+                if paymentid and paystatid:
+                    payment = get_object_or_404(PaymentTable, pk=paymentid)
+                    payment.paystatid = paystatid
+                    payment.save()
 
+                messages.success(request, "Status updated successfully!")
+            except Exception as e:
+                messages.error(request, f"Error updating status: {str(e)}")
+        else:
+            messages.error(request, "Invalid form data.")
     return redirect('salesManagement')
 
 # DATA ANALYSIS

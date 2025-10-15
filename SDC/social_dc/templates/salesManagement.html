@@ -54,7 +54,40 @@
 
                     <!-- Modal code remains the same -->
                     <div class="modal fade" id="saleModal{{ sale.salesid }}" tabindex="-1" aria-labelledby="saleModalLabel{{ sale.salesid }}" aria-hidden="true">
-                        <!-- Modal Content -->
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content bg-dark text-light">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="saleModalLabel{{ sale.salesid }}">Sale Details - Order #{{ sale.ordernumber }}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+
+                                <form method="post" action="{% url 'update_statuses' %}">
+                                {% csrf_token %}
+                                <div class="modal-body text-start">
+
+                                    {% for field in combined_forms|dict_get:sale.salesid %}
+                                    <div class="mb-3">
+                                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                        {% render_field field class="form-control" %}
+                                        {% if field.help_text %}
+                                        <small class="form-text text-muted">{{ field.help_text }}</small>
+                                        {% endif %}
+                                        {% for error in field.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endfor %}
+
+                                </div>
+
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-primary">Save changes</button>
+                                </div>
+                                </form>
+
+                            </div>
+                        </div>
                     </div>
 
                     {% endfor %}

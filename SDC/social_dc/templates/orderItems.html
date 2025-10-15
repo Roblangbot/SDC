@@ -2,6 +2,30 @@
 {% load static %}
 {% block title %} Ordered Items {% endblock %} 
 {% block content %}
+{% load tz %}
+
+<form method="get" class="row mb-4 g-3 align-items-center justify-content-center">
+    <div class="col-md-3">
+        <input type="date" name="date" class="form-control" value="{{ request.GET.date }}">
+    </div>
+
+    <div class="col-md-4">
+        <select name="product" class="form-select">
+            <option value="">All Products</option>
+            {% for product in products %}
+                <option value="{{ product.productid }}"
+                    {% if request.GET.product == product.productid|stringformat:"s" %}selected{% endif %}>
+                    {{ product.prodnameid.name }} ({{ product.colorid.colorname }})
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Filter</button>
+    </div>
+</form>
+
 
 <main class="flex-grow-1 overflow-auto p-4 p-md-5"> 
     <div class="container">
@@ -17,6 +41,8 @@
                     <th class="text-light text-center fw-bold">Sales ID</th>
                     <th class="text-light text-center fw-bold">Price ID</th>
                     <th class="text-light text-center fw-bold">Quantity</th>
+                    <th class="text-light text-center fw-bold">Date</th>
+                    <th class="text-light text-center fw-bold">Time</th>
                 </tr>
             </thead>
             <tbody class="text-light">
@@ -29,6 +55,8 @@
                     <td class="text-light">{{ order.salesid_id }}</td>
                     <td class="text-light">{{ order.priceid.amount }}</td>
                     <td class="text-light">{{ order.quantity }}</td>
+                    <td class="text-light">{% timezone "Asia/Manila" %}{{ order.salesid.sales_date }}{% endtimezone %}</td>
+                    <td class="text-light">{% timezone "Asia/Manila" %}{{ order.salesid.sales_time }}{% endtimezone %}</td> 
                 </tr>
                 {% endfor %}
             </tbody>

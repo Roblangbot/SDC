@@ -231,3 +231,24 @@ table, th, td{
     right: 5rem;
     top: 1.5rem;
 }
+
+.container-homeContent {
+  padding: 2rem;
+}
+
+.item-container-home {
+  background-color: #f8f9fa; /* Light background */
+  transition: transform 0.2s ease-in-out;
+}
+
+.item-container-home:hover {
+  transform: translateY(-5px);
+}
+
+.container-item-image .item {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+

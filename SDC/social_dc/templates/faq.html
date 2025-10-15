@@ -78,8 +78,24 @@
                     </details>
                 </div>
             </div>
-            
         </div>
     </div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const detailsElements = document.querySelectorAll("details");
 
+        detailsElements.forEach((detail) => {
+            detail.addEventListener("toggle", function () {
+                if (detail.open) {
+                    // Close all other <details> except the one just opened
+                    detailsElements.forEach((otherDetail) => {
+                        if (otherDetail !== detail) {
+                            otherDetail.removeAttribute("open");
+                        }
+                    });
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

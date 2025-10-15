@@ -20,7 +20,7 @@
     </div>
 
     <div class="container">
-        <form method="post" class="card card-body bg-dark text-light shadow-sm mb-5">
+        <form method="post" class="card card-body bg-dark text-light shadow-sm mb-5" id="prodNameForm">
             {% csrf_token %}
             {% if edit_prodname %}
                 <input type="hidden" name="prodnameid" value="{{ edit_prodname.prodnameid }}">
@@ -29,7 +29,7 @@
                 {{ form.name.label_tag }}
                 {{ form.name }}
             </div>
-            <button type="submit" class="btn btn-{{ edit_prodname|yesno:'primary,success' }}">
+            <button type="submit" class="btn btn-{{ edit_prodname|yesno:'primary,success' }}" id="submitBtn">
                 {% if edit_prodname %}Update{% else %}Add{% endif %}
             </button>
             {% if edit_prodname %}
@@ -71,5 +71,25 @@
     </table>
 
 </main>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.querySelector('#id_name');  // Django default id for 'name' field in form
+    const submitBtn = document.getElementById('submitBtn');
+
+    function toggleButton() {
+        if (input.value.trim() === '') {
+            submitBtn.disabled = true;
+        } else {
+            submitBtn.disabled = false;
+        }
+    }
+
+    // Initial check
+    toggleButton();
+
+    // Listen for input changes
+    input.addEventListener('input', toggleButton);
+});
+</script>
 
 {% endblock %}

@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="{% static 'styles/styles.css' %}">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg border-bottom shadow-sm">
+    <nav class="navbar navbar-expand-lg border-bottom shadow-sm sticky-top">
         <div class="container-fluid mx-5 fs-5 fw-semibold">
           <a class="navbar-brand" href="{% url "home" %}">
             <img class="sdcLogo" src="{% static 'images/SDC no Text.png' %}" alt="Logo">SOCIAL DISTRICT CLOTHING
@@ -92,7 +92,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
       </div>
 
-      <div class="offcanvas-body">
+      <div class="offcanvas-body" id="cartItemsContainer">
         {% if cart_items %}
           {% for item in cart_items %}
           <div class="container d-flex align-items-start mb-3 border-bottom pb-2">
@@ -159,45 +159,220 @@
       </div>
     </div>
 
+    <!-- Add to Cart / Buy Now Modal -->
+    <div class="modal fade" id="addToCartModal" tabindex="-1" aria-labelledby="addToCartModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <form id="addToCartFormBestSeller" method="POST" action="{% url 'add_to_cart' %}">
+          {% csrf_token %}
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="addToCartModalLabel">Add to Cart</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <img id="modalProductImage" src="" alt="Product Image" class="img-fluid mb-3" />
+              <input type="hidden" name="productID" id="modalProductID" value="" />
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        const toastElList = [].slice.call(document.querySelectorAll('.toast'))
-        toastElList.map(function (toastEl) {
-          new bootstrap.Toast(toastEl, { delay: 4000 }).show()
+              <div class="mb-3">
+                <label for="modalSizeID" class="form-label">Select Size</label>
+                <select class="form-select" id="modalSizeID" name="sizeID" required>
+                  <!-- Sizes will be populated dynamically -->
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label for="modalQuantity" class="form-label">Quantity</label>
+                <input type="number" min="1" value="1" class="form-control" id="modalQuantity" name="quantity" required />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" id="modalSubmitBtn" class="btn btn-success">Add to Cart</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+
+<script>
+  // --- Utility: Get CSRF Token ---
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie('csrftoken');
+</script>
+
+<script>
+  // --- Modal Logic: Populate and Submit ---
+  function openAddToCartModal(data) {
+    document.getElementById('modalProductID').value = data.productID;
+
+    // Populate size dropdown
+    const sizeSelect = document.getElementById('modalSizeID');
+    sizeSelect.innerHTML = '';
+    data.sizes.forEach(size => {
+      const option = document.createElement('option');
+      option.value = size.id;
+      option.text = size.label;
+      sizeSelect.appendChild(option);
+    });
+
+    // Set product image and reset quantity
+    document.getElementById('modalProductImage').src = data.imageURL;
+    document.getElementById('modalQuantity').value = 1;
+
+    // Reset Buy Now state
+    const form = document.getElementById('addToCartFormBestSeller');
+    form.dataset.buyNow = 'false';
+    document.getElementById('modalSubmitBtn').textContent = 'Add to Cart';
+  }
+
+  function openBuyNowModal(data) {
+    openAddToCartModal(data);
+    const form = document.getElementById('addToCartFormBestSeller');
+    form.dataset.buyNow = 'true';
+    document.getElementById('modalSubmitBtn').textContent = 'Buy Now';
+  }
+
+  document.getElementById('addToCartModal').addEventListener('hidden.bs.modal', () => {
+    const form = document.getElementById('addToCartFormBestSeller');
+    form.dataset.buyNow = 'false';
+    document.getElementById('modalSubmitBtn').textContent = 'Add to Cart';
+  });
+
+  document.getElementById('addToCartFormBestSeller').addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    const form = this;
+    const formData = new FormData(form);
+    const isBuyNow = form.dataset.buyNow === 'true';
+
+    fetch(form.action, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrftoken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addToCartModal'));
+        modal.hide();
+
+        // Update cart badge
+        const cartCount = document.getElementById('cartItemCount');
+        if (cartCount) {
+          cartCount.textContent = data.total_item_count;
+        }
+
+        if (isBuyNow) {
+          window.location.href = "{% url 'checkout' %}";
+        } else {
+          alert("Item added to cart!");
+        }
+      } else {
+        alert("Failed: " + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(() => alert("Something went wrong."));
+  });
+</script>
+
+<script>
+  // --- Quick Add to Cart Buttons (No modal) ---
+  document.addEventListener('DOMContentLoaded', () => {
+    const buttons = document.querySelectorAll('.ajax-add-to-cart');
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', function (event) {
+        event.preventDefault();
+
+        const payload = new FormData();
+        payload.append('productID', this.dataset.productId);
+        payload.append('sizeID', this.dataset.sizeId);
+        payload.append('quantity', this.dataset.quantity || 1);
+
+        fetch("{% url 'add_to_cart' %}", {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrftoken,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: payload
         })
-      })
-      function changeQuantity(button, change) {
-        const input = button.parentNode.querySelector('input[name="quantity"]');
-        let currentValue = parseInt(input.value) || 1;
-        let newValue = currentValue + change;
-        if (newValue < 1) newValue = 1; // prevent going below 1
-        input.value = newValue;
-        input.form.submit(); // auto-submit form
-      }
-      // Initialize and add the map
-      function initMap() {
-        // Your coordinates (example: Manila)
-        const location = { lat: 14.5995, lng: 120.9842 };
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const cartCount = document.getElementById('cartItemCount');
+            if (cartCount) {
+              cartCount.textContent = data.total_item_count;
+            }
+            alert("Item added to cart!");
+          } else {
+            alert("Error: " + (data.error || 'Unable to add'));
+          }
+        })
+        .catch(() => alert("Network error"));
+      });
+    });
+  });
+</script>
 
-        // Create the map
-        const map = new google.maps.Map(document.getElementById("map"), {
-          zoom: 14,
-          center: location,
-        });
+<script>
+  // --- Toasts (for success messages etc.) ---
+  document.addEventListener('DOMContentLoaded', () => {
+    const toasts = document.querySelectorAll('.toast');
+    toasts.forEach(toast => new bootstrap.Toast(toast, { delay: 4000 }).show());
+  });
 
-        // Add a marker
-        new google.maps.Marker({
-          position: location,
-          map: map,
-          title: "We are here!",
-        });
-      }
-    </script>
-    <script async
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD7vHyAIqo-jgZC82kJMrZ79Wks-Tg6PTg&callback=initMap">
-    </script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  // --- Quantity Increment/Decrement Utility ---
+  function changeQuantity(button, change) {
+    const input = button.parentNode.querySelector('input[name="quantity"]');
+    let currentValue = parseInt(input.value) || 1;
+    let newValue = currentValue + change;
+    if (newValue < 1) newValue = 1; // prevent going below 1
+    input.value = newValue;
+    input.form.submit(); // this reloads the page with updated quantity
+  }
+
+</script>
+
+<!-- Google Map (only loads if map is visible) -->
+<script>
+  function initMap() {
+    const location = { lat: 14.606, lng: 120.9736 };
+    const map = new google.maps.Map(document.getElementById("map"), {
+      zoom: 14,
+      center: location,
+    });
+
+    new google.maps.Marker({
+      position: location,
+      map: map,
+      title: "We are here!",
+    });
+  }
+</script>
+<script async
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD7vHyAIqo-jgZC82kJMrZ79Wks-Tg6PTg&callback=initMap">
+</script>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
 </body>
 </html>

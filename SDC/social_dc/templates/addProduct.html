@@ -11,12 +11,12 @@
                 <!-- Left: Image Preview -->
                 <div class="col-md-6 px-auto border border-ligth mb-5" style="height: 450px;">
                     <img id="imagePreview" src="" alt="Preview will appear here" 
-                        style="max-width: 450px; display:none; border:1px solid #ddd; padding:5px;" />
+                        style="max-width: 450px; display:none; border:1px solid #ddd; padding:5px; color: #fff;" />
                 </div>
 
                 <!-- Right: Form -->
                 <div class="col-md-6">
-                    <form method="POST">
+                    <form method="POST" id="productForm">
                         {% csrf_token %}
 
                         <!-- Product Name -->
@@ -39,13 +39,13 @@
 
                         <!-- Product Image URL -->
                         <div class="mb-3">
-                            <label for="id_productimage">Product Image:</label>
-                            <input type="url" name="productimage" maxlength="255" id="id_productimage" value="{{ product_form.productimage.value }}">
+                            <label for="id_productimage" >Product Image:</label>
+                            <input type="url" class="form-control" name="productimage" maxlength="255" id="id_productimage" value="{{ product_form.productimage.value }}">
                         </div>
 
                         <!-- Submit Button -->
                         <div class="mb-3">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary w-100" id="submitBtn" disabled>
                                 {% if edit_mode %}Save Changes{% else %}Create Product{% endif %}
                             </button>
                         </div>
@@ -101,12 +101,21 @@
 </main>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const input = document.getElementById("id_productimage");
+    document.addEventListener("DOMContentLoaded", function () {
+        const form = document.getElementById("productForm");
+        const submitBtn = document.getElementById("submitBtn");
+        const imageInput = document.getElementById("id_productimage");
         const preview = document.getElementById("imagePreview");
 
-        input.addEventListener("input", function() {
-            const url = input.value.trim();
+        // These are the 3 select dropdowns
+        const dropdowns = [
+            document.getElementById("id_prodnameid"),
+            document.getElementById("id_colorid"),
+            document.getElementById("id_priceid"),
+        ];
+
+        function updatePreview() {
+            const url = imageInput.value.trim();
             if (url) {
                 preview.src = url;
                 preview.style.display = "block";
@@ -114,8 +123,35 @@
                 preview.src = "";
                 preview.style.display = "none";
             }
+        }
+
+        function validateForm() {
+            const imageFilled = imageInput.value.trim() !== "";
+
+            // Check if all dropdowns have a selected value
+            const allSelected = dropdowns.every(select => {
+                const value = select.value.trim();
+                return value !== "" && value !== "0";
+            });
+
+            submitBtn.disabled = !(imageFilled && allSelected);
+        }
+
+        // Event listeners
+        imageInput.addEventListener("input", function () {
+            updatePreview();
+            validateForm();
         });
+
+        dropdowns.forEach(select => {
+            select.addEventListener("change", validateForm);
+        });
+
+        // Initial run
+        updatePreview();
+        validateForm();
     });
 </script>
+
 
 {% endblock %}

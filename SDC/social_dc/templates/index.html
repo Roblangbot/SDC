@@ -21,29 +21,53 @@
         <h2>BEST SELLER</h2>
       </div>
 
-      <div class="container-homeContent">
+      <div class="container-homeContent d-flex flex-wrap justify-content-center">
         {% for product in best_selling_products %}
-        <div class="item-container">
-          <div>
-            <div>
-              <h3>{{ product.prodnameid.name }}</h3>
-            </div>
-            <div class="container-item-image">
-              <img class="item" src="{{ product.productimage }}" alt="{{ product.prodnameid.name }}">
-            </div>
-            <div class="contianer-auto d-flex">
-              <a href="#" class="btn bg-primary w-50 p-2 me-4 mt-2">
-                <button type="button" class="btn bg-primary">Add to Cart</button>
-              </a>
-              <a href="#" class="btn bg-secondary w-50 p-2 ms-4 mt-2">
-                <button type="button" class="btn bg-secondary">Buy Now</button>
-              </a>
-            </div>
+        <div class="item-container-home mx-5 p-3 border rounded bg-light" style="width: 20rem;">
+          <h5 class="text-center">{{ product.prodnameid.name }}</h5>
+
+          <div class="container-item-image my-3 text-center">
+            <img class="item product-image img-fluid"
+                src="{{ product.productimage }}"
+                alt="{{ product.prodnameid.name }}">
+          </div>
+
+          <p class="text-muted text-center">Color: {{ product.colorid.colorname }}</p>
+          <p class="text-center fw-bold">₱{{ product.priceid.amount }}</p>
+
+          <div class="d-flex justify-content-between">
+            <button class="btn btn-success btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#addToCartModal"
+                    onclick="openAddToCartModal({
+                      productID: '{{ product.productid }}',
+                      imageURL: '{{ product.productimage }}',
+                      sizes: [
+                        {% for size in product.sizes %}
+                          { id: '{{ size.sizeid }}', label: '{{ size.size }}' }{% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                      ]
+                    })">
+              Add to Cart
+            </button>
+            <button class="btn btn-primary w-50 ms-1"
+                    data-bs-toggle="modal"
+                    data-bs-target="#addToCartModal"
+                    onclick="openBuyNowModal({
+                      productID: '{{ product.productid }}',
+                      imageURL: '{{ product.productimage }}',
+                      sizes: [
+                        {% for size in product.sizes %}
+                          { id: '{{ size.sizeid }}', label: '{{ size.size }}' }{% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                      ]
+                    })">
+              Buy Now
+            </button>
           </div>
         </div>
-        {% empty %}
-        <p class="text-light">No best sellers available right now.</p>
         {% endfor %}
       </div>
+
     </div>
 {% endblock %} 

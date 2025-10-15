@@ -1,6 +1,8 @@
 {% extends 'adminBase.html' %}
 {% load static %}
 {% load custom_filters %}
+{% load string_filters %}
+
 
 {% block title %} Sales Monitoring {% endblock %}
 
@@ -11,14 +13,22 @@
 
             <!-- AI Insight -->
             {% if sales_trend %}
-                <div class="alert alert-info mt-4">
+                <div class="alert mt-4 
+                    {% if sales_trend|startswith:"Increasing" %}
+                        alert-success
+                    {% elif sales_trend|startswith:"Decreasing" %}
+                        alert-danger
+                    {% else %}
+                        alert-secondary
+                    {% endif %}
+                ">
                     AI Insight: {{ sales_trend }}
                 </div>
             {% endif %}
 
             {% if outlier_periods %}
                 <div class="alert alert-warning mt-4">
-                    Unusual sales activity detected in: {{ outlier_periods|join:", " }}
+                    {{ outlier_periods }}
                 </div>
             {% endif %}
 

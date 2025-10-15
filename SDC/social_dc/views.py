@@ -1,9 +1,11 @@
 import numpy as np
 import statistics
+import pytz
 from datetime import date
 from sklearn.linear_model import LinearRegression
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.conf import settings
@@ -13,15 +15,19 @@ from django.http import HttpResponseBadRequest, HttpResponseNotFound, JsonRespon
 from django.db.models import Sum, Count, Avg, Q, OuterRef, Subquery
 from django.db.models.functions import TruncMonth, TruncDay
 from calendar import monthrange
+from django.utils.timezone import localtime, now
 from django.utils import timezone
+from django.template.loader import render_to_string
 from datetime import timedelta
 from .models import (ProductTable, CountryTable, PaystatTable, ProdNameTable, PriceTable, ItemStatusTable, SizeTable, ColorTable, OrderTable, SalesTable, PaymentTable, CustomerTable, SalesAddressTable, RegionTable, ProvinceTable, CityMunicipalityTable, BarangayTable)
 from .forms import ProductForm, CombinedStatusForm, ProdNameForm
 from .utils import enrich_cart
 import statistics
 from django.core.paginator import Paginator
+from datetime import datetime
 
-
+# Define Manila timezone
+manila_tz = pytz.timezone('Asia/Manila')
 
 def adminRegister(request):
     if request.method == 'POST':
@@ -55,17 +61,26 @@ def adminRegister(request):
 
 def adminLogin(request):
     if request.method == 'POST':
-        username = request.POST['username']  # Get username from form
-        password = request.POST['password']  # Get password from form
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        remember_me = request.POST.get('remember_me')  # Will be 'on' if checked
+
         user = authenticate(request, username=username, password=password)
 
-        if user is not None and user.is_staff:  # Check if user exists and is staff
-            login(request, user)  # Log the user in
-            return redirect('adminDashboard')  # Redirect to product creation page
+        if user is not None and user.is_staff:
+            login(request, user)
+
+            # If "Remember me" is not checked, expire session on browser close
+            if not remember_me:
+                request.session.set_expiry(0)  # Session expires on browser close
+            else:
+                request.session.set_expiry(60 * 60 * 24 * 30)  # 30 days
+
+            return redirect('adminDashboard')
         else:
-            messages.error(request, 'Invalid credentials or not authorized.')  # Error message if authentication fails
-    
-    return render(request, 'staffLogin.html')  # Render the login template
+            messages.error(request, 'Invalid credentials or not authorized.')
+
+    return render(request, 'staffLogin.html')
 
 
 def admin_logout(request):
@@ -73,30 +88,80 @@ def admin_logout(request):
     return redirect('adminLogin')
 # Create your views here.
 
+
+
 def home(request):
     cart_items, total_price = enrich_cart(request.session)
-        # Get top 3 best selling products by total quantity
-        # Step 1: Aggregate total quantity sold per product (Top 3)
+
+    # Step 1: Aggregate total quantity sold per product (Top 3)
     best_seller_data = (
         OrderTable.objects
-        .values('productid')  # Group by product ID
-        .annotate(total_sold=Sum('quantity'))  # Sum of all quantities per product
-        .order_by('-total_sold')[:3]  # Take top 3
+        .values('productid')  # 'productid' is correct here — it's a FK field
+        .annotate(total_sold=Sum('quantity'))
+        .order_by('-total_sold')[:3]
     )
 
-    # Step 2: Extract product IDs from the above result
+    # Step 2: Extract product IDs
     best_seller_ids = [item['productid'] for item in best_seller_data]
 
-    # Step 3: Get full ProductTable objects using the IDs
+    # Step 3: Get full product objects
     best_selling_products_queryset = ProductTable.objects.filter(productid__in=best_seller_ids)
 
-    # Step 4: Sort the products to match the order in best_seller_data
+    # Step 4: Preserve the same order as in best_seller_ids
     best_selling_products = sorted(
         best_selling_products_queryset,
         key=lambda product: best_seller_ids.index(product.productid)
     )
+    sizes_qs = SizeTable.objects.all()
+    sizes_list = list(sizes_qs.values('sizeid', 'size'))
 
-    return render(request, 'index.html', {'cart_items': cart_items, 'total_price': total_price, 'best_selling_products': best_selling_products})
+    # Example: all sizes for all products (assuming all products share same sizes)
+    sizes_by_product = {product.productid: sizes_list for product in best_selling_products}
+
+    # Add sizes attribute dynamically to each product instance
+    for product in best_selling_products:
+        product.sizes = sizes_by_product.get(product.productid, [])
+
+    return render(request, 'index.html', {
+        'cart_items': cart_items,
+        'total_price': total_price,
+        'best_selling_products': best_selling_products
+    })
+
+@require_POST
+def buy_now(request):
+    product_id = request.POST.get('productID')
+    size_id = request.POST.get('sizeID')
+    price_id = request.POST.get('priceID')
+    quantity = request.POST.get('quantity', 1)
+
+    # Validate data here if needed...
+
+    try:
+        product = ProductTable.objects.get(pk=product_id)
+        size = SizeTable.objects.get(pk=size_id)
+        price = PriceTable.objects.get(pk=price_id)
+    except (ProductTable.DoesNotExist, SizeTable.DoesNotExist, PriceTable.DoesNotExist):
+        messages.error(request, "Invalid product selection.")
+        return redirect('home')  # or wherever
+
+    # Create single-item cart
+    cart_item = {
+        'product_id': product.productid,
+        'product_name': product.prodnameid.name,
+        'size': size.size,
+        'size_id': size.sizeid,
+        'color': product.colorid.colorname,
+        'quantity': quantity,
+        'price': price.amount,
+        'price_id': price.priceid,
+        'image_url': product.productimage,
+    }
+
+    request.session['cart'] = [cart_item]
+    request.session.modified = True
+
+    return redirect('checkout')
 
 def faq(request):
     cart_items, total_price = enrich_cart(request.session)
@@ -138,6 +203,8 @@ def contacts(request):
         'total_price': total_price,
     })
 
+
+
 def checkout(request):
     cart_items = request.session.get('cart', [])
     if not cart_items:
@@ -162,13 +229,15 @@ def checkout(request):
         # 3. Create sales record
         total_price = sum(int(item['price']) * int(item['quantity']) for item in cart_items)
         status = ItemStatusTable.objects.get(pk=1)
+        local_now = localtime(now())
+
         sales = SalesTable.objects.create(
-            ordernumber=f"ORD-{timezone.now().strftime('%Y%m%d%H%M%S')}",
+            ordernumber=f"ORD-{local_now.strftime('%Y%m%d%H%M%S')}",
             customerid=customer,
             total_price=total_price,
             itemstatusid=status,
-            sales_date=timezone.now().date(),
-            sales_time=timezone.now().time()
+            sales_date=local_now.date(),
+            sales_time=local_now.time()
         )
 
         # 4. Create address (new format)
@@ -229,6 +298,41 @@ def checkout(request):
         'cart_items': cart_items,
         'total_price': total_price,
     })
+
+@require_POST
+def buy_now(request):
+    product_id = request.POST.get('productID')
+    size_id = request.POST.get('sizeID')
+    price_id = request.POST.get('priceID')
+    quantity = request.POST.get('quantity', 1)
+
+    # Validate data here if needed...
+
+    try:
+        product = ProductTable.objects.get(pk=product_id)
+        size = SizeTable.objects.get(pk=size_id)
+        price = PriceTable.objects.get(pk=price_id)
+    except (ProductTable.DoesNotExist, SizeTable.DoesNotExist, PriceTable.DoesNotExist):
+        messages.error(request, "Invalid product selection.")
+        return redirect('home')  # or wherever
+
+    # Create single-item cart
+    cart_item = {
+        'product_id': product.productid,
+        'product_name': product.prodnameid.name,
+        'size': size.size,
+        'size_id': size.sizeid,
+        'color': product.colorid.colorname,
+        'quantity': quantity,
+        'price': price.amount,
+        'price_id': price.priceid,
+        'image_url': product.productimage,
+    }
+
+    request.session['cart'] = [cart_item]
+    request.session.modified = True
+
+    return redirect('checkout')
 
 def order_success(request):
     return render(request, 'success.html')
@@ -356,68 +460,113 @@ def productPage(request, productID):
 
 def add_to_cart(request):
     if request.method == 'POST':
-        size_id = request.POST.get('sizeID')
-        quantity = request.POST.get('quantity')
-        product_id = request.POST.get('productID')
-
-        if not product_id:
-            return HttpResponseBadRequest("Product ID is missing.")
-        if not size_id or not quantity:
-            return HttpResponseBadRequest("Missing required data.")
-
         try:
+            size_id = request.POST.get('sizeID')
+            quantity = int(request.POST.get('quantity', 1))
+            product_id = request.POST.get('productID')
+
+            if not (size_id and product_id):
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': 'Missing size or product ID.'})
+                else:
+                    messages.error(request, "Missing size or product ID.")
+                    return redirect('productPage', productID=product_id)
+
             product = ProductTable.objects.select_related('colorid', 'prodnameid', 'priceid').get(productid=product_id)
-        except ProductTable.DoesNotExist:
-            return HttpResponseBadRequest("Product does not exist.")
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
-
-        try:
             size = SizeTable.objects.get(sizeid=size_id)
-        except SizeTable.DoesNotExist:
-            return HttpResponseBadRequest("Size does not exist.")
 
-        # If no errors, continue processing...
-        cart_item = {
-            'product_id': product.productid,
-            'product_name': product.prodnameid.name,
-            'size': size.size,
-            'size_id': size.sizeid,
-            'color': product.colorid.colorname,
-            'quantity': quantity,
-            'price': product.priceid.amount,
-            'price_id': product.priceid.priceid,                 # add price_id here
-            'image_url': product.productimage,
-        }
+            image_url = product.productimage.url if hasattr(product.productimage, 'url') else product.productimage
 
-        cart = request.session.get('cart', [])
+            cart_item = {
+                'product_id': product.productid,
+                'product_name': product.prodnameid.name,
+                'size': size.size,
+                'size_id': size.sizeid,
+                'color': product.colorid.colorname,
+                'quantity': quantity,
+                'price': product.priceid.amount,
+                'price_id': product.priceid.priceid,
+                'image_url': image_url,
+            }
 
-        # Merge if duplicate
+            cart = request.session.get('cart', [])
+            for item in cart:
+                if item['product_id'] == cart_item['product_id'] and item['size'] == cart_item['size']:
+                    item['quantity'] += quantity
+                    break
+            else:
+                cart.append(cart_item)
+
+            request.session['cart'] = cart
+            request.session.modified = True
+
+            total_item_count = sum(item['quantity'] for item in cart)
+            request.session['total_item_count'] = total_item_count
+
+            # Recalculate subtotals and total price
+            total_price = 0
+            for item in cart:
+                item['subtotal'] = item['quantity'] * item['price']
+                total_price += item['subtotal']
+
+            # If AJAX request, return JSON
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                cart_html = render_to_string('cart/_cart_items.html', {
+                    'cart_items': cart,
+                    'total_price': total_price,
+                }, request=request)
+
+                return JsonResponse({
+                    'success': True,
+                    'total_item_count': total_item_count,
+                    'cart_html': cart_html,
+                })
+
+            # Non-AJAX fallback
+            messages.success(request, "Item added to cart successfully!")
+            return redirect('productPage', productID=product_id)
+            
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            print("POST data:", request.POST)
+            print(tb)  # view console / server logs
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': str(e), 'traceback': tb})
+            else : messages.error(request, f"Something went wrong: {str(e)}")
+            return redirect('productPage', productID=request.POST.get('productID'))
+
+    return HttpResponseBadRequest("Invalid request method.")
+
+def update_cart_quantity(request, product_id, size):
+    if request.method == "POST":
+        new_qty = int(request.POST.get("quantity", 1))
+        cart = request.session.get("cart", [])
+        total_price = 0
+
         for item in cart:
-            if item['product_id'] == cart_item['product_id'] and item['size'] == cart_item['size']:
-                item['quantity'] = str(int(item['quantity']) + int(quantity))
-                break
-        else:
-            cart.append(cart_item)
+            if item["product_id"] == product_id and item["size"] == size:
+                item["quantity"] = new_qty
+                item["subtotal"] = item["quantity"] * item["price"]
+            total_price += item.get("subtotal", item["quantity"] * item["price"])
 
-        request.session['cart'] = cart
+        request.session["cart"] = cart
         request.session.modified = True
+        request.session["total_item_count"] = sum(item["quantity"] for item in cart)
 
-                # Count the total number of items in the cart (sum of quantities)
-        total_item_count = sum(int(item['quantity']) for item in cart)
-        
-        # Option 1: Store the total count in the session
-        request.session['total_item_count'] = total_item_count
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            cart_html = render_to_string('cart/_cart_items.html', {
+                'cart_items': cart,
+                'total_price': total_price
+            }, request=request)
 
-        # Option 2: Store the total count in a cookie (e.g., for cross-session tracking)
-        response = redirect('productPage', productID=product.productid)
-        response.set_cookie('item_count', total_item_count, max_age=3600)  # expires in 1 hour
+            return JsonResponse({
+                'success': True,
+                'cart_html': cart_html,
+                'total_item_count': request.session["total_item_count"]
+            })
 
-        messages.success(request, "Item successfully added to cart!")
-        return response
-    
-    return HttpResponseBadRequest("Invalid method.")
-
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
 
 def remove_from_cart(request, product_id, size):
     cart = request.session.get("cart", [])
@@ -425,44 +574,25 @@ def remove_from_cart(request, product_id, size):
 
     request.session["cart"] = cart
     request.session.modified = True
+    request.session["total_item_count"] = sum(item["quantity"] for item in cart)
 
-    referer = request.META.get('HTTP_REFERER')
-    if referer:
-        return HttpResponseRedirect(referer)
+    total_price = sum(item["price"] * item["quantity"] for item in cart)
+    for item in cart:
+        item["subtotal"] = item["quantity"] * item["price"]
 
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        cart_html = render_to_string('cart/_cart_items.html', {
+            'cart_items': cart,
+            'total_price': total_price
+        }, request=request)
 
-def update_cart_quantity(request, product_id, size):
-    if request.method == "POST":
-        new_qty = int(request.POST.get("quantity", 1))
-        cart = request.session.get("cart", [])
+        return JsonResponse({
+            'success': True,
+            'cart_html': cart_html,
+            'total_item_count': request.session["total_item_count"]
+        })
 
-        for item in cart:
-            if item["product_id"] == product_id and item["size"] == size:
-                item["quantity"] = new_qty
-                item["subtotal"] = item["quantity"] * item["price"]
-                break
-
-        request.session["cart"] = cart
-        request.session.modified = True
-
-    referer = request.META.get('HTTP_REFERER')
-    if referer:
-        return HttpResponseRedirect(referer)
-
-def cart(request):
-    cart_items = request.session.get("cart", [])
-
-    # Calculate subtotal per item & total
-    total_price = 0
-    for item in cart_items:
-        item["subtotal"] = int(item["price"]) * int(item["quantity"])
-        total_price += item["subtotal"]
-
-    return render(request, "cart.html", {
-        "cart_items": cart_items,
-        "total_price": total_price,
-    })
-
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
 
 @login_required(login_url='adminLogin')
 def adminDashboard(request):
@@ -492,11 +622,19 @@ def adminDashboard(request):
 
     recent_orders = []
     for o in recent_orders_qs:
+        # Combine sales_date and sales_time into a datetime
+        if o.salesid.sales_date and o.salesid.sales_time:
+            dt_naive = datetime.combine(o.salesid.sales_date, o.salesid.sales_time)
+            # Convert naive datetime to aware datetime in Manila timezone
+            dt_aware = manila_tz.localize(dt_naive)
+        else:
+            dt_aware = None  # fallback if either field missing
+
         recent_orders.append({
             'order_id': o.salesid.salesid,
             'product_name': o.productid.prodnameid.name,
             'customer_name': o.salesid.customerid.firstname,
-            'time_diff': o.salesid.sales_date,  # Format in template if needed
+            'time_diff': dt_aware,
             'amount': o.quantity * getattr(o.productid.priceid, 'amount', 0),
             'image_url': getattr(o.productid, 'productimage', ''),  # safer access
         })
@@ -603,15 +741,33 @@ def addProduct(request):
 
 @login_required(login_url='adminLogin')
 def orderedItems(request):
-    # Fetch all orders with related tables (e.g., size, product, color)
-    orders = OrderTable.objects.all().order_by('orderid')  # Ascendin
+    date_filter = request.GET.get('date')
+    product_filter = request.GET.get('product')
 
-    # Pass the orders to the template
-    context = {
-        'orders': orders
-    }
-    
-    return render(request, 'orderItems.html', context)
+    orders = OrderTable.objects.all().select_related(
+        'productid__prodnameid',
+        'productid__colorid',
+        'sizeid',
+        'priceid',
+    ).order_by('-orderid')
+
+    if date_filter:
+        try:
+            date_obj = datetime.strptime(date_filter, '%Y-%m-%d').date()
+            orders = orders.filter(salesid__sales_date=date_obj)
+        except ValueError:
+            pass  # Ignore invalid dates
+
+    if product_filter:
+        orders = orders.filter(productid__productid=product_filter)
+
+    # Get product list for the dropdown
+    products = ProductTable.objects.select_related('prodnameid', 'colorid').all()
+
+    return render(request, 'orderItems.html', {
+        'orders': orders,
+        'products': products,
+    })
 
 @login_required(login_url='adminLogin')
 def inventory(request):
@@ -797,7 +953,7 @@ def salesMonitor(request):
                      .order_by('-cltv')[:5]  # top 5 customers
 
     cltv_labels = [entry['customerid__firstname'] for entry in cltv_data]
-    cltv_totals = [entry['cltv'] for entry in cltv_data]
+    cltv_totals = [float(entry['cltv']) for entry in cltv_data]  # Convert Decimal to float
 
     # ========== SALES TREND ANALYSIS ========== #
     linearx = np.arange(len(sales_data)).reshape(-1, 1)
@@ -815,7 +971,7 @@ def salesMonitor(request):
             trend = "Stable sales"
 
     # ========== OUTLIER DETECTION ========== #
-    sales_values = list(lineary)
+    sales_values = [int(x) for x in lineary]  # Convert numpy ints to native int
     outliers = []
 
     if len(sales_values) >= 2:
@@ -827,21 +983,21 @@ def salesMonitor(request):
     # ========== CONTEXT FOR TEMPLATE ========== #
     context = {
         'color_labels': [c['productid__colorid__colorname'] for c in color_data],
-        'color_totals': [c['total'] for c in color_data],
+        'color_totals': [int(c['total']) for c in color_data],
 
         'design_labels': [d['productid__prodnameid__name'] for d in design_data],
-        'design_totals': [d['total'] for d in design_data],
+        'design_totals': [int(d['total']) for d in design_data],
 
         'size_labels': [s['sizeid__size'] for s in size_data],
-        'size_totals': [s['total'] for s in size_data],
+        'size_totals': [int(s['total']) for s in size_data],
 
         'combo_labels': [f"{c['productid__prodnameid__name']}/{c['productid__colorid__colorname']}" for c in combo_data[:5]],
-        'combo_totals': [c['total'] for c in combo_data[:5]],
+        'combo_totals': [int(c['total']) for c in combo_data[:5]],
 
         'sales_labels': timeframe_labels,
-        'sales_totals': list(lineary),
+        'sales_totals': sales_values,
 
-        'average_order_value': round(aov, 2),
+        'average_order_value': round(float(aov), 2),
         'cltv_labels': cltv_labels,
         'cltv_totals': cltv_totals,
 

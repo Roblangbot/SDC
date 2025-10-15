@@ -15,7 +15,6 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -25,7 +24,7 @@ SECRET_KEY = 'django-insecure-lb@au))$kns%ujg^j-b(y1+&cxnrx7&p!gjnj5m@uizzs6^ezl
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['socialdistrictclothing.store', 'www.socialdistrictclothing.store', '72.60.233.151', '127.0.0.1']
 
 
 # Application definition
@@ -112,7 +111,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Manila'
 
 USE_I18N = True
 
@@ -143,3 +142,5 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'ceejhaysuriaga@gmail.com'
 EMAIL_HOST_PASSWORD = 'hzgo afxy irnk nunb'  # Use App Password, NOT your real Gmail password
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False

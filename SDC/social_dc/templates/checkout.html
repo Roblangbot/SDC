@@ -3,6 +3,28 @@
 {% block title %} Checkout Page {% endblock %}
 
 {% block content %}
+<!-- OTP Verification Modal -->
+<div class="modal fade" id="otpModal" tabindex="-1" aria-labelledby="otpModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="otpForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="otpModalLabel">Verify Your Order</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>We've sent an OTP to your email or phone number. Please enter it below to confirm your order.</p>
+          <input type="text" id="otpInput" class="form-control" placeholder="Enter OTP" required>
+          <div id="otpError" class="text-danger mt-2" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Verify & Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div class="container py-5">
   <div class="row">
 
@@ -61,7 +83,7 @@
           </select>
         </div>
 
-        <button type="submit" class="btn btn-dark w-100">Confirm Order</button>
+        <button type="submit" class="btn btn-dark w-100" id="submitBtn">Confirm Order</button>
       </form>
     </div>
 
@@ -98,8 +120,85 @@
 
   </div>
 </div>
-
+<!-- ✅ Redirect data for success page -->
+<div id="redirect-data" data-success-url="{% url 'order_success' %}"></div>
 <!-- Google Maps + Address logic -->
+<script>
+  // ✅ Handle OTP + checkout flow
+  document.getElementById('checkoutForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const form = document.getElementById("checkoutForm");
+    const formData = new FormData(form);
+    const orderData = Object.fromEntries(formData.entries());
+    orderData.cart_items = {{ cart_items|safe }}; // include cart data in OTP step
+
+    // Step 1: Send OTP
+    fetch("{% url 'send_otp' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email: orderData.email,
+        contact: orderData.contact_no,
+        order_data: orderData
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === "sent") {
+        new bootstrap.Modal(document.getElementById('otpModal')).show();
+      } else {
+        alert("❌ Failed to send OTP. Try again.");
+      }
+    })
+    .catch(err => {
+      console.error("Error sending OTP:", err);
+      alert("⚠️ Something went wrong while sending OTP.");
+    });
+  });
+
+  // Step 2: Verify OTP
+  document.getElementById('otpForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const otp = document.getElementById('otpInput').value;
+    const email = document.querySelector('input[name="email"]').value;
+
+    fetch("{% url 'verify_otp' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email: email, otp: otp })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === "verified") {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('otpModal'));
+        modal.hide();
+        alert("✅ OTP verified! Your order has been placed successfully.");
+
+        // ✅ Safely get URL from Django-rendered data attribute
+        const successUrl = document.getElementById('redirect-data').dataset.successUrl;
+        window.location.href = successUrl;
+      } else {
+        document.getElementById('otpError').innerText = data.message || "Invalid OTP. Try again.";
+        document.getElementById('otpError').style.display = 'block';
+      }
+    })
+    .catch(err => {
+      console.error("Error verifying OTP:", err);
+      document.getElementById('otpError').innerText = "⚠️ Something went wrong. Please try again.";
+      document.getElementById('otpError').style.display = 'block';
+    });
+  });
+</script>
+
+{% comment %} Gmaps {% endcomment %}
 <script>
   let autocomplete;
   let map;
@@ -119,7 +218,7 @@
       renderMap(latlng);
     });
 
-    // ✅ Set up the buttons after API is ready
+    // Buttons for address input
     const btnUseLocation = document.getElementById('btnUseLocation');
     const btnManualAddress = document.getElementById('btnManualAddress');
 
@@ -181,12 +280,12 @@
         document.getElementById('addressChoice').style.display = 'none';
       });
     } else {
-      alert("Geolocation is not supported by your browser");
+      alert("Geolocation is not supported by your browser.");
     }
   }
 </script>
 
-
+<!-- Google Maps API -->
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD7vHyAIqo-jgZC82kJMrZ79Wks-Tg6PTg&libraries=places&callback=initAutocomplete" async defer></script>
 
 {% endblock %}

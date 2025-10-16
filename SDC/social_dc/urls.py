@@ -1,6 +1,7 @@
 from django.urls import path, include
 from django.contrib.auth.decorators import login_required
 from . import views
+from .views import OrderRequestView, VerifyOrderOTPView 
 
 urlpatterns = [
     path('', views.home, name="home"),
@@ -8,12 +9,16 @@ urlpatterns = [
     path('product/', views.product, name="product"),
     path('contacts/', views.contacts, name="contacts"),
     path('faq/', views.faq, name="faq"),
-    path('checkout/', views.checkout, name='checkout'),
     path('productPage/<int:productID>', views.productPage, name="productPage"),
     path('adminRegistration/', views.adminRegister, name="adminRegister"),
     path('adminLogin/', views.adminLogin, name="adminLogin"),
     path('admin/logout/', views.admin_logout, name='admin_logout'),
     path('orderSuccess/', views.order_success, name="order_success"),
+
+    #OTP
+    path('checkout/', views.checkout, name='checkout'),
+    path('send-otp/', views.OrderRequestView.as_view(), name='send_otp'),
+    path('verify-otp/', views.VerifyOrderOTPView.as_view(), name='verify_otp'),
 
     # CART FUNCTIONS
     path('add-to-cart/', views.add_to_cart, name='add_to_cart'),

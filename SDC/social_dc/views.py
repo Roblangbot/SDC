@@ -1,6 +1,5 @@
 import numpy as np
-import statistics
-import pytz
+import statistics, pytz, json, random
 from datetime import date
 from sklearn.linear_model import LinearRegression
 from django.contrib.auth import authenticate, login, logout
@@ -19,12 +18,14 @@ from django.utils.timezone import localtime, now
 from django.utils import timezone
 from django.template.loader import render_to_string
 from datetime import timedelta
-from .models import (ProductTable, CountryTable, PaystatTable, ProdNameTable, PriceTable, ItemStatusTable, SizeTable, ColorTable, OrderTable, SalesTable, PaymentTable, CustomerTable, SalesAddressTable, RegionTable, ProvinceTable, CityMunicipalityTable, BarangayTable)
+from .models import (ProductTable, PendingOrder, PaystatTable, ProdNameTable, PriceTable, ItemStatusTable, SizeTable, ColorTable, OrderTable, SalesTable, PaymentTable, CustomerTable, SalesAddressTable, RegionTable, ProvinceTable, CityMunicipalityTable, BarangayTable)
 from .forms import ProductForm, CombinedStatusForm, ProdNameForm
-from .utils import enrich_cart
+from .utils import enrich_cart, generate_otp, send_order_otp, cleanup_expired_otps
 import statistics
 from django.core.paginator import Paginator
-from datetime import datetime
+from datetime import datetime   
+from django.views import View
+
 
 # Define Manila timezone
 manila_tz = pytz.timezone('Asia/Manila')
@@ -86,28 +87,22 @@ def adminLogin(request):
 def admin_logout(request):
     logout(request)
     return redirect('adminLogin')
-# Create your views here.
-
 
 
 def home(request):
     cart_items, total_price = enrich_cart(request.session)
 
-    # Step 1: Aggregate total quantity sold per product (Top 3)
     best_seller_data = (
         OrderTable.objects
-        .values('productid')  # 'productid' is correct here — it's a FK field
+        .values('productid')
         .annotate(total_sold=Sum('quantity'))
         .order_by('-total_sold')[:3]
     )
 
-    # Step 2: Extract product IDs
     best_seller_ids = [item['productid'] for item in best_seller_data]
 
-    # Step 3: Get full product objects
     best_selling_products_queryset = ProductTable.objects.filter(productid__in=best_seller_ids)
 
-    # Step 4: Preserve the same order as in best_seller_ids
     best_selling_products = sorted(
         best_selling_products_queryset,
         key=lambda product: best_seller_ids.index(product.productid)
@@ -115,10 +110,8 @@ def home(request):
     sizes_qs = SizeTable.objects.all()
     sizes_list = list(sizes_qs.values('sizeid', 'size'))
 
-    # Example: all sizes for all products (assuming all products share same sizes)
     sizes_by_product = {product.productid: sizes_list for product in best_selling_products}
 
-    # Add sizes attribute dynamically to each product instance
     for product in best_selling_products:
         product.sizes = sizes_by_product.get(product.productid, [])
 
@@ -135,17 +128,14 @@ def buy_now(request):
     price_id = request.POST.get('priceID')
     quantity = request.POST.get('quantity', 1)
 
-    # Validate data here if needed...
-
     try:
         product = ProductTable.objects.get(pk=product_id)
         size = SizeTable.objects.get(pk=size_id)
         price = PriceTable.objects.get(pk=price_id)
     except (ProductTable.DoesNotExist, SizeTable.DoesNotExist, PriceTable.DoesNotExist):
         messages.error(request, "Invalid product selection.")
-        return redirect('home')  # or wherever
+        return redirect('home') 
 
-    # Create single-item cart
     cart_item = {
         'product_id': product.productid,
         'product_name': product.prodnameid.name,
@@ -187,9 +177,9 @@ def contacts(request):
             email = EmailMessage(
                 subject=subject,
                 body=body,
-                from_email=settings.DEFAULT_FROM_EMAIL,  # ✅ Always your verified email
-                to=[settings.DEFAULT_FROM_EMAIL],        # ✅ Sent to your inbox
-                reply_to=[sender_email]                  # ✅ Reply goes to visitor
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[settings.DEFAULT_FROM_EMAIL],
+                reply_to=[sender_email]
             )
             email.send()
             messages.success(request, "Your message has been sent successfully!")
@@ -203,7 +193,220 @@ def contacts(request):
         'total_price': total_price,
     })
 
+def process_order(order_data):
+    from django.utils.timezone import localtime, now
+    from django.contrib import messages
 
+    # Extract core data
+    first_name = order_data.get('first_name')
+    last_name = order_data.get('last_name')
+    contact_no = order_data.get('contact_no')
+    email = order_data.get('email')
+
+    # ✅ Get the most recent customer record (safe even with duplicates)
+    customer = CustomerTable.objects.filter(email=email).order_by('-customerid').first()
+
+    # If no existing record, create a new one
+    if not customer:
+        customer = CustomerTable.objects.create(
+            firstname=first_name,
+            lastname=last_name,
+            contactno=contact_no,
+            email=email
+        )
+
+    # 2️⃣ Compute total
+    cart_items = order_data.get('cart_items', [])
+    total_price = sum(int(item['price']) * int(item['quantity']) for item in cart_items)
+
+    # 3️⃣ Create SalesTable record
+    status = ItemStatusTable.objects.get(pk=1)
+    local_now = localtime(now())
+
+    sales = SalesTable.objects.create(
+        ordernumber=f"ORD-{local_now.strftime('%Y%m%d%H%M%S')}",
+        customerid=customer,
+        total_price=total_price,
+        itemstatusid=status,
+        sales_date=local_now.date(),
+        sales_time=local_now.time()
+    )
+
+    # 4️⃣ Address
+    SalesAddressTable.objects.create(
+        salesid=sales,
+        full_address=order_data.get('full_address'),
+        latitude=order_data.get('latitude'),
+        longitude=order_data.get('longitude'),
+        delivery_instructions=order_data.get('delivery_instructions'),
+        createdat=now()
+    )
+
+    # 5️⃣ Create OrderTable items
+    for item in cart_items:
+        try:
+            product = ProductTable.objects.get(pk=item['product_id'])
+            size = SizeTable.objects.get(pk=item['size_id'])
+            price = PriceTable.objects.get(pk=item['price_id'])
+
+            existing_order = OrderTable.objects.filter(
+                salesid=sales,
+                productid=product,
+                sizeid=size
+            ).first()
+
+            if existing_order:
+                existing_order.quantity += int(item['quantity'])
+                existing_order.save()
+            else:
+                OrderTable.objects.create(
+                    salesid=sales,
+                    productid=product,
+                    sizeid=size,
+                    priceid=price,
+                    quantity=int(item['quantity']),
+                )
+
+        except Exception as e:
+            print(f"❌ Error saving item '{item.get('product_name')}': {e}")
+
+    # 6️⃣ Payment info
+    paystat = PaystatTable.objects.get(pk=1)
+    PaymentTable.objects.create(
+        salesid=sales,
+        mop=order_data.get('payment_method'),
+        date=now().date(),
+        time=now().time(),
+        paystatid=paystat,
+    )
+
+    print("✅ Order successfully created for", customer.email)
+    return sales
+
+class VerifyOrderOTPView(View):
+    def post(self, request):
+        cleanup_expired_otps()
+        try:
+            data = json.loads(request.body)
+            print("DEBUG OTP DATA:", data)
+
+            email = data.get("email")
+            entered_otp = data.get("otp")
+
+            if not email or not entered_otp:
+                print("DEBUG ERROR: Missing email or OTP")
+                return JsonResponse({"error": "Missing data"}, status=400)
+
+            # ✅ Get the *most recent* customer record with this email
+            customer = CustomerTable.objects.filter(email=email).last()
+            if not customer:
+                print("DEBUG ERROR: Customer not found for email:", email)
+                return JsonResponse({"error": "Customer not found"}, status=404)
+
+            print("DEBUG STEP: Customer found", customer.pk, customer.email)
+
+            # ✅ Look up pending order
+            try:
+                pending_order = PendingOrder.objects.filter(
+                    customerid=customer,
+                    is_verified=False
+                ).latest("created_at")
+                print("DEBUG STEP: Pending order found:", pending_order.pk)
+
+            except PendingOrder.DoesNotExist:
+                print("DEBUG ERROR: No pending order for customer")
+                return JsonResponse({"error": "No pending order found"}, status=404)
+                
+            except Exception as e:
+                print("DEBUG ERROR: Pending order lookup failed:", e)
+                return JsonResponse({"error": f"Pending order error: {e}"}, status=400)
+
+            # ✅ Check OTP expiry
+            if pending_order.is_expired():
+                print("DEBUG ERROR: OTP expired")
+                return JsonResponse({"error": "OTP expired"}, status=400)
+
+            print("DEBUG STEP: Comparing entered OTP with stored:", entered_otp, pending_order.otp)
+
+            if pending_order.otp != entered_otp:
+                print("DEBUG ERROR: Incorrect OTP")
+                return JsonResponse({"error": "Incorrect OTP"}, status=400)
+
+            # ✅ Mark as verified
+            pending_order.is_verified = True
+            pending_order.save()
+            print("DEBUG STEP: OTP verified successfully")
+
+            # ✅ Process the order
+            order_data = pending_order.order_data
+            print("DEBUG STEP: Processing order_data:", order_data)
+
+            sales = process_order(order_data)  # 👈 create real order records
+
+            if 'cart' in request.session:
+                request.session['cart'] = []
+                request.session.modified = True
+                print("✅ Cart cleared after verified OTP")
+                
+            # ✅ Clean up
+            pending_order.delete()
+
+            print("DEBUG STEP: Pending order deleted and order created:", sales.ordernumber)
+
+            return JsonResponse({
+                "status": "verified",
+                "message": "Order confirmed successfully!"
+            })
+
+        except Exception as e:
+            print("DEBUG CRITICAL ERROR:", e)
+            return JsonResponse({"error": f"Server error: {e}"}, status=500)
+
+def generate_otp():
+    """Generate a 6-digit random OTP"""
+    return str(random.randint(100000, 999999))
+
+class OrderRequestView(View):
+    def post(self, request):
+        try:
+            cleanup_expired_otps()
+            data = json.loads(request.body)
+            email = data.get("email")
+            order_data = data.get("order_data", {})
+
+            if not email:
+                return JsonResponse({"status": "error", "message": "Email is required."}, status=400)
+
+            # ✅ Use .filter() and take the most recent (not .get())
+            customer = CustomerTable.objects.filter(email=email).order_by('-customerid').first()
+
+            if not customer:
+                # Optional: Create a new record for new buyer
+                customer = CustomerTable.objects.create(
+                    firstname=order_data.get("first_name", ""),
+                    lastname=order_data.get("last_name", ""),
+                    contactno=order_data.get("contact_no", ""),
+                    email=email
+                )
+
+            # ✅ Generate a 6-digit OTP
+            otp = str(random.randint(100000, 999999))
+
+            # ✅ Send OTP (email or console)
+            send_order_otp(customer.email, otp)
+
+            # ✅ Create pending order entry (attach JSON order_data)
+            PendingOrder.objects.create(
+                customerid=customer,
+                otp=otp,
+                order_data=order_data
+            )
+
+            return JsonResponse({"status": "sent", "message": "OTP sent successfully."})
+
+        except Exception as e:
+            print("OTP sending failed:", e)
+            return JsonResponse({"status": "error", "message": f"Failed to send OTP: {e}"}, status=500)
 
 def checkout(request):
     cart_items = request.session.get('cart', [])
@@ -226,7 +429,6 @@ def checkout(request):
             email=email
         )
 
-        # 3. Create sales record
         total_price = sum(int(item['price']) * int(item['quantity']) for item in cart_items)
         status = ItemStatusTable.objects.get(pk=1)
         local_now = localtime(now())
@@ -240,7 +442,6 @@ def checkout(request):
             sales_time=local_now.time()
         )
 
-        # 4. Create address (new format)
         SalesAddressTable.objects.create(
             salesid=sales,
             full_address=request.POST.get('full_address'),
@@ -250,7 +451,6 @@ def checkout(request):
             createdat=timezone.now()
         )
 
-        # 5. Save order items
         for item in cart_items:
             try:
                 product = ProductTable.objects.get(pk=item['product_id'])
@@ -278,7 +478,6 @@ def checkout(request):
             except Exception as e:
                 print(f"❌ Error saving item '{item['product_name']}': {e}")
 
-        # 6. Save payment
         paystat = PaystatTable.objects.get(pk=1)
         PaymentTable.objects.create(
             salesid=sales,
@@ -288,11 +487,9 @@ def checkout(request):
             paystatid=paystat,
         )
 
-        # 7. Clear cart
         request.session['cart'] = []
         return redirect('order_success')
 
-    # For GET request, we no longer need address dropdowns
     total_price = sum(int(item['price']) * int(item['quantity']) for item in cart_items)
     return render(request, 'checkout.html', {
         'cart_items': cart_items,
@@ -306,17 +503,15 @@ def buy_now(request):
     price_id = request.POST.get('priceID')
     quantity = request.POST.get('quantity', 1)
 
-    # Validate data here if needed...
-
     try:
         product = ProductTable.objects.get(pk=product_id)
         size = SizeTable.objects.get(pk=size_id)
         price = PriceTable.objects.get(pk=price_id)
     except (ProductTable.DoesNotExist, SizeTable.DoesNotExist, PriceTable.DoesNotExist):
         messages.error(request, "Invalid product selection.")
-        return redirect('home')  # or wherever
+        return redirect('home')
 
-    # Create single-item cart
+
     cart_item = {
         'product_id': product.productid,
         'product_name': product.prodnameid.name,

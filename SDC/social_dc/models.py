@@ -6,6 +6,8 @@
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
+from django.utils import timezone
+from datetime import timedelta
 
 
 class AuthGroup(models.Model):
@@ -251,6 +253,19 @@ class PaystatTable(models.Model):
     def __str__(self):
         return self.status
 
+class PendingOrder(models.Model):
+    customerid = models.ForeignKey(CustomerTable, on_delete=models.CASCADE)
+    otp = models.CharField(max_length=6)
+    is_verified = models.BooleanField(default=False)
+    order_data = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        managed = False
+        db_table = 'pending_order_table'
+
+    def is_expired(self):
+        return timezone.now() > self.created_at + timedelta(minutes=10)
 
 class PriceTable(models.Model):
     priceid = models.IntegerField(db_column='priceID', primary_key=True)  # Field name made lowercase.

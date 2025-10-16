@@ -1,3 +1,5 @@
 SDC/.venv/
 SDC/.venv311/
 SDC/SDC/__pycache__/
+
+SDC/staticfiles/

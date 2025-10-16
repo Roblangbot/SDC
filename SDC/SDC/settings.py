@@ -123,6 +123,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
@@ -139,8 +141,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'ceejhaysuriaga@gmail.com'
-EMAIL_HOST_PASSWORD = 'hzgo afxy irnk nunb'  # Use App Password, NOT your real Gmail password
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_HOST_USER = 'robmeshill@gmail.com'
+EMAIL_HOST_PASSWORD = 'atjb yxzr srzu ihik'  # Use App Password, NOT your real Gmail password
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False

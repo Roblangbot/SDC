@@ -22,9 +22,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-lb@au))$kns%ujg^j-b(y1+&cxnrx7&p!gjnj5m@uizzs6^ezl'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['socialdistrictclothing.store', 'www.socialdistrictclothing.store', '72.60.233.151', '127.0.0.1']
+ALLOWED_HOSTS = ['socialdistrictclothing.store', 'www.socialdistrictclothing.store', '72.60.233.151',]
 
 
 # Application definition

@@ -600,6 +600,9 @@ def product(request):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
+    page_obj.object_list = list(page_obj.object_list)
+    random.shuffle(page_obj.object_list)
+
     return render(request, "product.html", {
         "page_obj": page_obj,
         "cart_items": cart_items,

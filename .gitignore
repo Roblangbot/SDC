@@ -1,5 +1,11 @@
 .venv/
+venv
 SDC/.venv311/
 SDC/SDC/__pycache__/
 
 SDC/staticfiles/
+
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo

@@ -11,8 +11,8 @@ from django.conf import settings
 from django.core.mail import send_mail, BadHeaderError, EmailMessage
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponseBadRequest, HttpResponseNotFound, JsonResponse, HttpResponseRedirect
-from django.db.models import Sum, Count, Avg, Q, OuterRef, Subquery, Case, When, Value, IntegerField
-from django.db.models.functions import TruncMonth, TruncDay
+from django.db.models import Sum, Count, Avg, Q, OuterRef, Subquery, Case, When, Value, IntegerField, F, DecimalField
+from django.db.models.functions import TruncMonth, TruncDay, TruncWeek, TruncYear, Coalesce
 from calendar import monthrange
 from django.utils.timezone import localtime, now
 from django.utils import timezone
@@ -1124,40 +1124,72 @@ def update_statuses(request):
 def salesMonitor(request):
     # Get current date
     today = date.today()
+    sales_timeframe = request.GET.get('timeframe', 'month')
     
-    # Get the first and last day of the current month
-    start_date = date(today.year, today.month, 1)
-    end_day = monthrange(today.year, today.month)[1]
-    end_date = date(today.year, today.month, end_day)
-
+    # Dynamic date range based on timeframe
+    if sales_timeframe == 'day':
+        # Last 30 days
+        start_date = today - timedelta(days=30)
+        end_date = today
+    elif sales_timeframe == 'week':
+        # Last 12 weeks
+        start_date = today - timedelta(weeks=12)
+        end_date = today
+    elif sales_timeframe == 'year':
+        # Last 5 years
+        start_date = date(today.year - 5, 1, 1)
+        end_date = today
+    else:  # month (default)
+        # Last 12 months
+        start_date = date(today.year - 1, today.month, 1)
+        end_date = today
+    
     # Filter orders and sales within date range
     orders = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))
     sales = SalesTable.objects.filter(sales_date__range=(start_date, end_date))
 
     # ========== SALES TRENDS ========== #
-    sales_timeframe = request.GET.get('timeframe', 'month')
-
     if sales_timeframe == 'day':
         sales_data = sales.annotate(day=TruncDay('sales_date')) \
                     .values('day').annotate(total=Count('salesid')).order_by('day')
         timeframe_labels = [s['day'].strftime('%d %b') for s in sales_data]
-    else:
+    elif sales_timeframe == 'week':
+        sales_data = sales.annotate(week=TruncWeek('sales_date')) \
+                    .values('week').annotate(total=Count('salesid')).order_by('week')
+        timeframe_labels = [s['week'].strftime('Week of %d %b') for s in sales_data]
+    elif sales_timeframe == 'year':
+        sales_data = sales.annotate(year=TruncYear('sales_date')) \
+                    .values('year').annotate(total=Count('salesid')).order_by('year')
+        timeframe_labels = [s['year'].strftime('%Y') for s in sales_data]
+    else:  # month (default)
         sales_data = sales.annotate(month=TruncMonth('sales_date')) \
                     .values('month').annotate(total=Count('salesid')).order_by('month')
-        timeframe_labels = [s['month'].strftime('%b').upper() for s in sales_data]
+        timeframe_labels = [s['month'].strftime('%b %Y') for s in sales_data]
 
     # ========== MOST BOUGHT ANALYTICS ========== #
+    # Calculate revenue for each color
     color_data = orders.values('productid__colorid__colorname') \
-                    .annotate(total=Sum('quantity')).order_by('-total')
+                    .annotate(
+                        total_revenue=Sum(F('quantity') * F('priceid__amount'), output_field=DecimalField())
+                    ).order_by('-total_revenue')
 
+    # Calculate revenue for each design
     design_data = orders.values('productid__prodnameid__name') \
-                    .annotate(total=Sum('quantity')).order_by('-total')
+                    .annotate(
+                        total_revenue=Sum(F('quantity') * F('priceid__amount'), output_field=DecimalField())
+                    ).order_by('-total_revenue')
 
+    # Calculate revenue for each size
     size_data = orders.values('sizeid__size') \
-                    .annotate(total=Sum('quantity')).order_by('-total')
+                    .annotate(
+                        total_revenue=Sum(F('quantity') * F('priceid__amount'), output_field=DecimalField())
+                    ).order_by('-total_revenue')
 
+    # Calculate revenue for each product/color combo
     combo_data = orders.values('productid__prodnameid__name', 'productid__colorid__colorname') \
-                    .annotate(total=Sum('quantity')).order_by('-total')
+                    .annotate(
+                        total_revenue=Sum(F('quantity') * F('priceid__amount'), output_field=DecimalField())
+                    ).order_by('-total_revenue')
 
     # ========== AVERAGE ORDER VALUE (AOV) ========== #
     aov = sales.aggregate(avg_order=Avg('total_price'))['avg_order'] or 0
@@ -1198,16 +1230,16 @@ def salesMonitor(request):
     # ========== CONTEXT FOR TEMPLATE ========== #
     context = {
         'color_labels': [c['productid__colorid__colorname'] for c in color_data],
-        'color_totals': [int(c['total']) for c in color_data],
+        'color_totals': [float(c['total_revenue']) if c['total_revenue'] else 0 for c in color_data],
 
         'design_labels': [d['productid__prodnameid__name'] for d in design_data],
-        'design_totals': [int(d['total']) for d in design_data],
+        'design_totals': [float(d['total_revenue']) if d['total_revenue'] else 0 for d in design_data],
 
         'size_labels': [s['sizeid__size'] for s in size_data],
-        'size_totals': [int(s['total']) for s in size_data],
+        'size_totals': [float(s['total_revenue']) if s['total_revenue'] else 0 for s in size_data],
 
         'combo_labels': [f"{c['productid__prodnameid__name']}/{c['productid__colorid__colorname']}" for c in combo_data[:5]],
-        'combo_totals': [int(c['total']) for c in combo_data[:5]],
+        'combo_totals': [float(c['total_revenue']) if c['total_revenue'] else 0 for c in combo_data[:5]],
 
         'sales_labels': timeframe_labels,
         'sales_totals': sales_values,

@@ -41,7 +41,7 @@
                 {% if page_obj.object_list %}
                     {% for sale in page_obj %}
                     <tr>
-                        <td>{{ sale.ordernumber }}</td>
+                        <td>{{ sale.salesid|stringformat:"06d" }}</td>
                         <td>{{ sale.customerid }}</td>
                         <td>{{ sale.total_price }}</td>
                         <td>{{ sale.itemstatusid.itemstat }}</td>
@@ -57,7 +57,7 @@
                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content bg-dark text-light">
                                 <div class="modal-header">
-                                    <h5 class="modal-title" id="saleModalLabel{{ sale.salesid }}">Sale Details - Order #{{ sale.ordernumber }}</h5>
+                                    <h5 class="modal-title" id="saleModalLabel{{ sale.salesid }}">Sale Details - Order #{{ sale.salesid|stringformat:"06d" }}</h5>
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
 

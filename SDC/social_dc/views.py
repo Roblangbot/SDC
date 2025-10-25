@@ -11,7 +11,7 @@ from django.conf import settings
 from django.core.mail import send_mail, BadHeaderError, EmailMessage
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponseBadRequest, HttpResponseNotFound, JsonResponse, HttpResponseRedirect
-from django.db.models import Sum, Count, Avg, Q, OuterRef, Subquery
+from django.db.models import Sum, Count, Avg, Q, OuterRef, Subquery, Case, When, Value, IntegerField
 from django.db.models.functions import TruncMonth, TruncDay
 from calendar import monthrange
 from django.utils.timezone import localtime, now
@@ -1030,8 +1030,15 @@ def salesManagement(request):
     search_query = request.GET.get('search', '')
 
     sales_qs = SalesTable.objects.all() \
-        .select_related('customerid', 'itemstatusid') \
-        .order_by('-sales_date', '-sales_time')
+    .select_related('customerid', 'itemstatusid') \
+    .annotate(
+        status_order=Case(
+            When(itemstatusid__itemstat='Pending', then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField()
+        )
+    ) \
+    .order_by('status_order', 'salesid')
 
     if search_query:
         # Search by order number or customer first/last name (case-insensitive)

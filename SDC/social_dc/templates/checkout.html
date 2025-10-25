@@ -38,17 +38,17 @@
         <h5 class="mb-3">Contact Information</h5>
         <div class="row">
           <div class="col-md-6 mb-3">
-            <input type="text" name="first_name" class="form-control" placeholder="First Name" required>
+            <input type="text" name="first_name" id="first_name" class="form-control" placeholder="First Name" required>
           </div>
           <div class="col-md-6 mb-3">
-            <input type="text" name="last_name" class="form-control" placeholder="Last Name" required>
+            <input type="text" name="last_name" id="last_name" class="form-control" placeholder="Last Name" required>
           </div>
         </div>
         <div class="mb-3">
           <input type="email" name="email" class="form-control" placeholder="Email" required>
         </div>
         <div class="mb-3">
-          <input type="text" name="contact_no" class="form-control" placeholder="Contact No." required>
+          <input type="text" name="contact_no" id="contact_no" class="form-control" placeholder="Contact No." required>
         </div>
 
         <!-- Delivery Address Section -->
@@ -198,6 +198,31 @@
   });
 </script>
 
+
+<script>
+  // Validation: Only allow letters and spaces for names
+  function validateNameInput(e) {
+    const char = String.fromCharCode(e.which);
+    if (!/[a-zA-Z\s]/.test(char)) {
+      e.preventDefault();
+    }
+  }
+
+  // Validation: Only allow numbers for contact
+  function validateNumberInput(e) {
+    const char = String.fromCharCode(e.which);
+    if (!/[0-9]/.test(char)) {
+      e.preventDefault();
+    }
+  }
+
+  // Apply validation to name fields
+  document.getElementById('first_name').addEventListener('keypress', validateNameInput);
+  document.getElementById('last_name').addEventListener('keypress', validateNameInput);
+  
+  // Apply validation to contact number
+  document.getElementById('contact_no').addEventListener('keypress', validateNumberInput);
+</script>
 {% comment %} Gmaps {% endcomment %}
 <script>
   let autocomplete;

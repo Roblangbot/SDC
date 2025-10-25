@@ -691,14 +691,16 @@ def add_to_cart(request):
             for item in cart:
                 if item['product_id'] == cart_item['product_id'] and item['size'] == cart_item['size']:
                     item['quantity'] += quantity
+                    if item['quantity'] >= 50:
+                        item['quantity'] = 50
                     break
             else:
                 cart.append(cart_item)
 
             request.session['cart'] = cart
             request.session.modified = True
-
-            total_item_count = sum(item['quantity'] for item in cart)
+            
+            total_item_count = len(cart)
             request.session['total_item_count'] = total_item_count
 
             # Recalculate subtotals and total price
@@ -750,7 +752,9 @@ def update_cart_quantity(request, product_id, size):
 
         request.session["cart"] = cart
         request.session.modified = True
-        request.session["total_item_count"] = sum(item["quantity"] for item in cart)
+        request.session["total_item_count"] = len(cart)
+
+        print(f"Updated cart: {cart}")
 
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             cart_html = render_to_string('cart/_cart_items.html', {
@@ -772,7 +776,7 @@ def remove_from_cart(request, product_id, size):
 
     request.session["cart"] = cart
     request.session.modified = True
-    request.session["total_item_count"] = sum(item["quantity"] for item in cart)
+    request.session["total_item_count"] = len(cart)
 
     total_price = sum(item["price"] * item["quantity"] for item in cart)
     for item in cart:

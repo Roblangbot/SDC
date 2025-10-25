@@ -12,7 +12,7 @@ def cart_items_processor(request):
         except (KeyError, ValueError, TypeError):
             item["subtotal"] = 0
         total_price += item["subtotal"]
-        total_item_count += int(item["quantity"]) 
+        total_item_count = len(cart_items)
 
     return {
         'cart_items': cart_items,

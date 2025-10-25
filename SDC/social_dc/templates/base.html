@@ -345,9 +345,41 @@
     let currentValue = parseInt(input.value) || 1;
     let newValue = currentValue + change;
     if (newValue < 1) newValue = 1; // prevent going below 1
+    if (newValue > 50) newValue = 50; // prevent going above 50
     input.value = newValue;
     input.form.submit(); // this reloads the page with updated quantity
   }
+
+  // Validate quantity inputs (cart and modal)
+  document.addEventListener('DOMContentLoaded', function() {
+    // Cart quantity validation
+    const cartQuantityInputs = document.querySelectorAll('.quantityUpdate');
+    cartQuantityInputs.forEach(input => {
+      input.addEventListener('input', function() {
+        let value = parseInt(this.value);
+        if (value < 1 || isNaN(value)) {
+          this.value = 1;
+        }
+        if (value > 50) {
+          this.value = 50;
+        }
+      });
+    });
+
+    // Modal quantity validation
+    const modalQuantity = document.getElementById('modalQuantity');
+    if (modalQuantity) {
+      modalQuantity.addEventListener('input', function() {
+        let value = parseInt(this.value);
+        if (value < 1 || isNaN(value)) {
+          this.value = 1;
+        }
+        if (value > 50) {
+          this.value = 50;
+        }
+      });
+    }
+  });
 
 </script>
 

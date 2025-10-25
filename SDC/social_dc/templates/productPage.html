@@ -34,7 +34,7 @@
                 <!-- Quantity -->
                 <div class="mb-4">
                     <label for="quantity" class="form-label">Quantity</label>
-                    <input type="number" name="quantity" id="quantity" min="1" value="1" class="form-control" required>
+                    <input type="number" name="quantity" id="quantity" min="1" max="50" value="1" class="form-control" required>
                 </div>
 
                 <!-- Size Options -->
@@ -99,6 +99,32 @@ document.addEventListener('DOMContentLoaded', function () {
     const hiddenImage = document.getElementById('selectedImageURL');
     const hiddenProduct = document.getElementById('selectedProductID');
     const mainImage = document.getElementById('mainProductImage');
+    const quantityInput = document.getElementById('quantity');
+
+    // Validate quantity input
+    quantityInput.addEventListener('input', function() {
+        let value = parseInt(this.value);
+        
+        // Prevent negative values
+        if (value < 1 || isNaN(value)) {
+            this.value = 1;
+        }
+        
+        // Prevent values over 50
+        if (value > 50) {
+            this.value = 50;
+        }
+    });
+
+    // Validate on blur (when user leaves the field)
+    quantityInput.addEventListener('blur', function() {
+        if (this.value === '' || parseInt(this.value) < 1) {
+            this.value = 1;
+        }
+        if (parseInt(this.value) > 50) {
+            this.value = 50;
+        }
+    });
 
     // 🧠 Activate label styling
     function updateActive(radioGroup) {

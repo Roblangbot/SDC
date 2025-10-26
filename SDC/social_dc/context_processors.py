@@ -5,6 +5,7 @@ def cart_items_processor(request):
 
     total_item_count = 0
     total_price = 0
+    unique_products = set()
 
     for item in cart_items:
         try:
@@ -12,7 +13,12 @@ def cart_items_processor(request):
         except (KeyError, ValueError, TypeError):
             item["subtotal"] = 0
         total_price += item["subtotal"]
-        total_item_count = len(cart_items)
+        
+        # Count unique products by product_name (same across all sizes/colors)
+        if "product_name" in item:
+            unique_products.add(item["product_name"])
+    
+    total_item_count = len(unique_products)  # Count unique products only
 
     return {
         'cart_items': cart_items,

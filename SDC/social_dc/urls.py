@@ -12,7 +12,7 @@ urlpatterns = [
     path('productPage/<int:productID>', views.productPage, name="productPage"),
     path('adminRegistration/', views.adminRegister, name="adminRegister"),
     path('adminLogin/', views.adminLogin, name="adminLogin"),
-    path('admin/logout/', views.admin_logout, name='admin_logout'),
+    path('adminLogin/', views.admin_logout, name='admin_logout'),
     path('orderSuccess/', views.order_success, name="order_success"),
 
     #OTP

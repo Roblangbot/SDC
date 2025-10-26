@@ -224,13 +224,17 @@ def process_order(order_data):
     local_now = localtime(now())
 
     sales = SalesTable.objects.create(
-        ordernumber=f"ORD-{local_now.strftime('%Y%m%d%H%M%S')}",
+        ordernumber=f"ORD-{local_now.strftime('%Y%m%d%H%M%S')}",  # Temporary
         customerid=customer,
         total_price=total_price,
         itemstatusid=status,
         sales_date=local_now.date(),
         sales_time=local_now.time()
     )
+    
+    # Update order number to use sales ID with zero-padding
+    sales.ordernumber = f"ORD-{sales.salesid:07d}"  # e.g., ORD-0000001
+    sales.save()
 
     # 4️⃣ Address
     SalesAddressTable.objects.create(
@@ -353,6 +357,11 @@ class VerifyOrderOTPView(View):
 
             print("DEBUG STEP: Pending order deleted and order created:", sales.ordernumber)
 
+            # 🔥 STORE ORDER ID IN SESSION FOR E-RECEIPT
+            request.session['last_order_id'] = sales.salesid
+            request.session.modified = True
+            print(f"✅ Order ID {sales.salesid} stored in session")
+
             return JsonResponse({
                 "status": "verified",
                 "message": "Order confirmed successfully!"
@@ -434,13 +443,17 @@ def checkout(request):
         local_now = localtime(now())
 
         sales = SalesTable.objects.create(
-            ordernumber=f"ORD-{local_now.strftime('%Y%m%d%H%M%S')}",
+            ordernumber=f"ORD-{local_now.strftime('%Y%m%d%H%M%S')}",  # Temporary
             customerid=customer,
             total_price=total_price,
             itemstatusid=status,
             sales_date=local_now.date(),
             sales_time=local_now.time()
         )
+        
+        # Update order number to use sales ID with zero-padding
+        sales.ordernumber = f"ORD-{sales.salesid:07d}"  # e.g., ORD-0000001
+        sales.save()
 
         SalesAddressTable.objects.create(
             salesid=sales,
@@ -487,6 +500,8 @@ def checkout(request):
             paystatid=paystat,
         )
 
+        # Store sales ID in session for e-receipt
+        request.session['last_order_id'] = sales.salesid
         request.session['cart'] = []
         return redirect('order_success')
 
@@ -530,6 +545,92 @@ def buy_now(request):
     return redirect('checkout')
 
 def order_success(request):
+    # Get the last order ID from session
+    order_id = request.session.get('last_order_id')
+    
+    print(f"🔍 DEBUG: order_id from session = {order_id}")
+    
+    if order_id:
+        try:
+            # Fetch order details
+            sales = SalesTable.objects.select_related('customerid').get(salesid=order_id)
+            print(f"🔍 DEBUG: Found sales record for order {sales.ordernumber}")
+            print(f"🔍 DEBUG: Customer email: {sales.customerid.email}")
+            
+            orders = OrderTable.objects.filter(salesid=sales).select_related(
+                'productid__prodnameid', 
+                'productid__colorid', 
+                'sizeid', 
+                'priceid'
+            )
+            payment = PaymentTable.objects.get(salesid=sales)
+            address = SalesAddressTable.objects.get(salesid=sales)
+            
+            print(f"🔍 DEBUG: Found {orders.count()} order items")
+            
+            # Prepare order items for email
+            order_items = []
+            for order in orders:
+                order_items.append({
+                    'product_name': order.productid.prodnameid.name,
+                    'color': order.productid.colorid.colorname,
+                    'size': order.sizeid.size,
+                    'quantity': order.quantity,
+                    'price': order.priceid.amount,
+                    'subtotal': order.quantity * order.priceid.amount,
+                    'image_url': order.productid.productimage
+                })
+            
+            # Prepare email context
+            context = {
+                'order_number': sales.ordernumber,
+                'customer_name': f"{sales.customerid.firstname} {sales.customerid.lastname}",
+                'order_date': sales.sales_date,
+                'order_time': sales.sales_time,
+                'order_items': order_items,
+                'total_price': sales.total_price,
+                'payment_method': payment.mop,
+                'delivery_address': address.full_address,
+                'delivery_instructions': address.delivery_instructions or 'None'
+            }
+            
+            print(f"🔍 DEBUG: Email context prepared successfully")
+            
+            # Render email template
+            html_message = render_to_string('email_receipt.html', context)
+            print(f"🔍 DEBUG: Email template rendered successfully")
+            print(f"🔍 DEBUG: Email settings - FROM: {settings.DEFAULT_FROM_EMAIL}, BACKEND: {settings.EMAIL_BACKEND}")
+            
+            # Send email
+            try:
+                email = EmailMessage(
+                    subject=f'Order Confirmation - {sales.ordernumber}',
+                    body=html_message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[sales.customerid.email]
+                )
+                email.content_subtype = 'html'  # Set email to HTML
+                email.send()
+                
+                print(f"✅ E-receipt sent to {sales.customerid.email}")
+            except Exception as e:
+                print(f"❌ Failed to send e-receipt: {e}")
+                print(f"❌ Error type: {type(e).__name__}")
+                import traceback
+                traceback.print_exc()
+            
+            # Clear the session variable
+            del request.session['last_order_id']
+            print(f"🔍 DEBUG: Session variable cleared")
+            
+        except Exception as e:
+            print(f"❌ Error retrieving order details: {e}")
+            print(f"❌ Error type: {type(e).__name__}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"⚠️ WARNING: No order_id found in session")
+    
     return render(request, 'success.html')
 
 

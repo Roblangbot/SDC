@@ -1125,43 +1125,53 @@ def salesMonitor(request):
     
     # Dynamic date range based on timeframe
     if sales_timeframe == 'day':
+        # Last 24 hours (1 day)
+        start_date = today - timedelta(days=1)
+        end_date = today
+    elif sales_timeframe == 'week':
+        # Last 7 days
+        start_date = today - timedelta(days=7)
+        end_date = today
+    elif sales_timeframe == 'year':
+        # Last 365 days (1 year)
+        start_date = today - timedelta(days=365)
+        end_date = today
+    else:  # month (default)
         # Last 30 days
         start_date = today - timedelta(days=30)
         end_date = today
-    elif sales_timeframe == 'week':
-        # Last 12 weeks
-        start_date = today - timedelta(weeks=12)
-        end_date = today
-    elif sales_timeframe == 'year':
-        # Last 5 years
-        start_date = date(today.year - 5, 1, 1)
-        end_date = today
-    else:  # month (default)
-        # Last 12 months
-        start_date = date(today.year - 1, today.month, 1)
-        end_date = today
     
-    # Filter orders and sales within date range
-    orders = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))
-    sales = SalesTable.objects.filter(sales_date__range=(start_date, end_date))
+    # Filter orders and sales within date range - ONLY PAID (paystatid=2)
+    orders = OrderTable.objects.filter(
+        salesid__sales_date__range=(start_date, end_date),
+        salesid__paymenttable__paystatid=2  # Only PAID orders
+    )
+    sales = SalesTable.objects.filter(
+        sales_date__range=(start_date, end_date),
+        paymenttable__paystatid=2  # Only PAID sales
+    )
 
     # ========== SALES TRENDS ========== #
     if sales_timeframe == 'day':
+        # For 1 day, group by day (shows single point or could be hourly)
         sales_data = sales.annotate(day=TruncDay('sales_date')) \
                     .values('day').annotate(total=Count('salesid')).order_by('day')
         timeframe_labels = [s['day'].strftime('%d %b') for s in sales_data]
     elif sales_timeframe == 'week':
-        sales_data = sales.annotate(week=TruncWeek('sales_date')) \
-                    .values('week').annotate(total=Count('salesid')).order_by('week')
-        timeframe_labels = [s['week'].strftime('Week of %d %b') for s in sales_data]
+        # For 7 days, group by day
+        sales_data = sales.annotate(day=TruncDay('sales_date')) \
+                    .values('day').annotate(total=Count('salesid')).order_by('day')
+        timeframe_labels = [s['day'].strftime('%d %b') for s in sales_data]
     elif sales_timeframe == 'year':
-        sales_data = sales.annotate(year=TruncYear('sales_date')) \
-                    .values('year').annotate(total=Count('salesid')).order_by('year')
-        timeframe_labels = [s['year'].strftime('%Y') for s in sales_data]
-    else:  # month (default)
+        # For 365 days, group by month
         sales_data = sales.annotate(month=TruncMonth('sales_date')) \
                     .values('month').annotate(total=Count('salesid')).order_by('month')
         timeframe_labels = [s['month'].strftime('%b %Y') for s in sales_data]
+    else:  # month (default - 30 days)
+        # For 30 days, group by day
+        sales_data = sales.annotate(day=TruncDay('sales_date')) \
+                    .values('day').annotate(total=Count('salesid')).order_by('day')
+        timeframe_labels = [s['day'].strftime('%d %b') for s in sales_data]
 
     # ========== MOST BOUGHT ANALYTICS ========== #
     # Calculate revenue for each color

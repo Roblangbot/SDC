@@ -203,22 +203,22 @@ def process_order(order_data):
     contact_no = order_data.get('contact_no')
     email = order_data.get('email')
 
-    # ✅ Get or create customer, always update with latest information
-    customer, created = CustomerTable.objects.get_or_create(
-        email=email,
-        defaults={
-            'firstname': first_name,
-            'lastname': last_name,
-            'contactno': contact_no,
-        }
-    )
-    
-    # If customer already exists, update with latest information
-    if not created:
-        customer.firstname = first_name
-        customer.lastname = last_name
-        customer.contactno = contact_no
+    customer = CustomerTable.objects.filter(email=email).order_by('-pk').first()
+
+    if customer:
+        # Update existing customer's info with latest data
+        customer.firstname = first_name or customer.firstname
+        customer.lastname = last_name or customer.lastname
+        customer.contactno = contact_no or customer.contactno
         customer.save()
+    else:
+        # Create new customer if none found
+        customer = CustomerTable.objects.create(
+            email=email,
+            firstname=first_name,
+            lastname=last_name,
+            contactno=contact_no
+        )
 
     # 2️⃣ Compute total
     cart_items = order_data.get('cart_items', [])
@@ -392,21 +392,12 @@ class OrderRequestView(View):
                 return JsonResponse({"status": "error", "message": "Email is required."}, status=400)
 
             # ✅ Get or create customer, always update with latest information
-            customer, created = CustomerTable.objects.get_or_create(
+            customer = CustomerTable.objects.create(
                 email=email,
-                defaults={
-                    'firstname': order_data.get("first_name", ""),
-                    'lastname': order_data.get("last_name", ""),
-                    'contactno': order_data.get("contact_no", ""),
-                }
+                firstname=order_data.get("first_name", ""),
+                lastname=order_data.get("last_name", ""),
+                contactno=order_data.get("contact_no", "")
             )
-            
-            # If customer already exists, update with latest information
-            if not created:
-                customer.firstname = order_data.get("first_name", customer.firstname)
-                customer.lastname = order_data.get("last_name", customer.lastname)
-                customer.contactno = order_data.get("contact_no", customer.contactno)
-                customer.save()
 
             # ✅ Generate a 6-digit OTP
             otp = str(random.randint(100000, 999999))

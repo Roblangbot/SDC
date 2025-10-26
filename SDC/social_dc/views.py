@@ -1029,7 +1029,10 @@ def newProductName(request):
 def salesManagement(request):
     search_query = request.GET.get('search', '')
 
-    sales_qs = SalesTable.objects.all() \
+    # Get all sales IDs that have payments
+    sales_with_payments = PaymentTable.objects.values_list('salesid_id', flat=True)
+
+    sales_qs = SalesTable.objects.filter(salesid__in=sales_with_payments) \
     .select_related('customerid', 'itemstatusid') \
     .annotate(
         status_order=Case(
@@ -1067,7 +1070,10 @@ def salesManagement(request):
     combined_forms = {}
     for sale in page_obj.object_list:
         payment = payment_dict.get(sale.salesid)
+        # Since we filtered to only sales with payments, payment should always exist
         if payment:
+            # Attach payment_id directly to the sale object for easy template access
+            sale.payment_id = payment.paymentid
             initial_data = {
                 'itemstatusid': sale.itemstatusid_id,
                 'paystatid': payment.paystatid_id,
@@ -1075,18 +1081,9 @@ def salesManagement(request):
                 'paymentid': payment.paymentid,
             }
             combined_forms[sale.salesid] = CombinedStatusForm(initial=initial_data)
-        else:
-            # If no payment found, just fill itemstatus and salesid
-            initial_data = {
-                'itemstatusid': sale.itemstatusid_id,
-                'salesid': sale.salesid,
-                # paymentid is required in the form, so you might want to handle this case accordingly
-            }
-            combined_forms[sale.salesid] = CombinedStatusForm(initial=initial_data)
 
     return render(request, 'salesManagement.html', {
         'page_obj': page_obj,
-        'payments': payments,
         'combined_forms': combined_forms,  # pass combined forms instead of separate forms
         'search_query': search_query,
     })

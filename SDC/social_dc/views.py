@@ -1063,7 +1063,7 @@ def addProduct(request):
 @login_required(login_url='adminLogin')
 def orderedItems(request):
     date_filter = request.GET.get('date')
-    product_filter = request.GET.get('product')
+    product_search = request.GET.get('product')  # Now accepts product name search
 
     orders = OrderTable.objects.all().select_related(
         'productid__prodnameid',
@@ -1079,16 +1079,34 @@ def orderedItems(request):
         except ValueError:
             pass  # Ignore invalid dates
 
-    if product_filter:
-        orders = orders.filter(productid__productid=product_filter)
+    if product_search:
+        # Search by product name (case-insensitive)
+        orders = orders.filter(productid__prodnameid__name__icontains=product_search)
 
-    # Get product list for the dropdown
-    products = ProductTable.objects.select_related('prodnameid', 'colorid').all()
+    # Calculate subtotal for each order
+    orders_list = list(orders)
+    for order in orders_list:
+        order.subtotal = order.quantity * order.priceid.amount
 
     return render(request, 'orderItems.html', {
-        'orders': orders,
-        'products': products,
+        'orders': orders_list,
+        'product_search': product_search,  # Pass search term back to template
     })
+
+@login_required(login_url='adminLogin')
+def product_autocomplete(request):
+    """API endpoint for product name autocomplete"""
+    query = request.GET.get('q', '')
+    
+    if len(query) < 1:  # Only search if at least 1 character entered
+        return JsonResponse({'suggestions': []})
+    
+    # Get unique product names that match the query
+    products = ProdNameTable.objects.filter(
+        name__icontains=query
+    ).values_list('name', flat=True).distinct()[:10]  # Limit to 10 suggestions
+    
+    return JsonResponse({'suggestions': list(products)})
 
 @login_required(login_url='adminLogin')
 def inventory(request):

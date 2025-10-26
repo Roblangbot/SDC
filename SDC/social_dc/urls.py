@@ -36,4 +36,6 @@ urlpatterns = [
     path('analysis/', views.analysis, name="analysis"),
     path('salesManagement/', views.salesManagement, name="salesManagement"),
     path('salesManagement/update-statuses/', views.update_statuses, name='update_statuses'),
+
+    path('api/product-autocomplete/', views.product_autocomplete, name='product_autocomplete'),
 ]

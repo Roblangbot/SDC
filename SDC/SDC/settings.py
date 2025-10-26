@@ -29,6 +29,7 @@ ALLOWED_HOSTS = [
     "www.socialdistrictclothing.store",
     "72.60.233.151",
     "localhost",
+    "127.0.0.1",
 ]
 
 

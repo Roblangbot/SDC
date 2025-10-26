@@ -203,17 +203,22 @@ def process_order(order_data):
     contact_no = order_data.get('contact_no')
     email = order_data.get('email')
 
-    # ✅ Get the most recent customer record (safe even with duplicates)
-    customer = CustomerTable.objects.filter(email=email).order_by('-customerid').first()
-
-    # If no existing record, create a new one
-    if not customer:
-        customer = CustomerTable.objects.create(
-            firstname=first_name,
-            lastname=last_name,
-            contactno=contact_no,
-            email=email
-        )
+    # ✅ Get or create customer, always update with latest information
+    customer, created = CustomerTable.objects.get_or_create(
+        email=email,
+        defaults={
+            'firstname': first_name,
+            'lastname': last_name,
+            'contactno': contact_no,
+        }
+    )
+    
+    # If customer already exists, update with latest information
+    if not created:
+        customer.firstname = first_name
+        customer.lastname = last_name
+        customer.contactno = contact_no
+        customer.save()
 
     # 2️⃣ Compute total
     cart_items = order_data.get('cart_items', [])
@@ -386,17 +391,22 @@ class OrderRequestView(View):
             if not email:
                 return JsonResponse({"status": "error", "message": "Email is required."}, status=400)
 
-            # ✅ Use .filter() and take the most recent (not .get())
-            customer = CustomerTable.objects.filter(email=email).order_by('-customerid').first()
-
-            if not customer:
-                # Optional: Create a new record for new buyer
-                customer = CustomerTable.objects.create(
-                    firstname=order_data.get("first_name", ""),
-                    lastname=order_data.get("last_name", ""),
-                    contactno=order_data.get("contact_no", ""),
-                    email=email
-                )
+            # ✅ Get or create customer, always update with latest information
+            customer, created = CustomerTable.objects.get_or_create(
+                email=email,
+                defaults={
+                    'firstname': order_data.get("first_name", ""),
+                    'lastname': order_data.get("last_name", ""),
+                    'contactno': order_data.get("contact_no", ""),
+                }
+            )
+            
+            # If customer already exists, update with latest information
+            if not created:
+                customer.firstname = order_data.get("first_name", customer.firstname)
+                customer.lastname = order_data.get("last_name", customer.lastname)
+                customer.contactno = order_data.get("contact_no", customer.contactno)
+                customer.save()
 
             # ✅ Generate a 6-digit OTP
             otp = str(random.randint(100000, 999999))
@@ -903,9 +913,15 @@ def adminDashboard(request):
     start_date = today - timedelta(days=29)  # last 30 days including today
     end_date = today
 
-    # Fetch orders and sales in current month
-    orders = OrderTable.objects.filter(salesid__sales_date__range=(start_date, end_date))
-    sales = SalesTable.objects.filter(sales_date__range=(start_date, end_date))
+    # Fetch orders and sales in current month - ONLY PAID (paystatid=2)
+    orders = OrderTable.objects.filter(
+        salesid__sales_date__range=(start_date, end_date),
+        salesid__paymenttable__paystatid=2  # Only PAID orders
+    )
+    sales = SalesTable.objects.filter(
+        sales_date__range=(start_date, end_date),
+        paymenttable__paystatid=2  # Only PAID sales
+    )
 
     # 1. Sales Over Time (Daily Aggregation)
     sales_time_data = sales.annotate(day=TruncDay('sales_date')) \
@@ -952,6 +968,7 @@ def adminDashboard(request):
 
     # Status badge mapping
     badge_map = {
+        'Claimed': 'text-bg-success',
         'Delivered': 'text-bg-success',
         'Pending': 'text-bg-warning',
         'Cancelled': 'text-bg-danger'
@@ -959,10 +976,11 @@ def adminDashboard(request):
 
     top_products = []
     for product in top_products_data:
-        # Get latest order's item status for this product in current month
+        # Get latest order's item status for this product in current month (PAID only)
         latest_order = OrderTable.objects.filter(
             productid=product['productid'],
-            salesid__sales_date__range=(start_date, end_date)
+            salesid__sales_date__range=(start_date, end_date),
+            salesid__paymenttable__paystatid=2  # Only PAID orders
         ).order_by('-salesid__sales_date').select_related('salesid__itemstatusid').first()
 
         status = getattr(latest_order.salesid.itemstatusid, 'itemstat', 'Unknown') if latest_order else 'Unknown'

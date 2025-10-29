@@ -1169,7 +1169,7 @@ def salesManagement(request):
             output_field=IntegerField()
         )
     ) \
-    .order_by('status_order', 'salesid')
+    .order_by('status_order', '-salesid')
 
     if search_query:
         # Search by order number or customer first/last name (case-insensitive)

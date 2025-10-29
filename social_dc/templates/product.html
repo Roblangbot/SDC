@@ -45,7 +45,10 @@
                   alt="{{ product.productname }}">
                 <div class="card-body">
                   <h6 class="card-title text-truncate">{{ product.productname }}</h6>
-                  <p class="card-text fw-bold text-primary">PHP {{ product.price }}</p>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="fw-bold text-primary fs-5">₱{{ product.price }}</span>
+                    <span class="text-muted text-decoration-line-through small">₱500.00</span>
+                  </div>
                 </div>
               </div>
             </a>

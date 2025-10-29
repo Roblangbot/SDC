@@ -3,7 +3,7 @@
 #   * Rearrange models' order
 #   * Make sure each model has one field with primary_key=True
 #   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
-#   * Remove `# managed = False` lines if you wish to allow Django to create, modify, and delete the table
+#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 from django.utils import timezone
@@ -14,7 +14,7 @@ class AuthGroup(models.Model):
     name = models.CharField(unique=True, max_length=150)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'auth_group'
 
 
@@ -24,7 +24,7 @@ class AuthGroupPermissions(models.Model):
     permission = models.ForeignKey('AuthPermission', models.DO_NOTHING)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'auth_group_permissions'
         unique_together = (('group', 'permission'),)
 
@@ -35,7 +35,7 @@ class AuthPermission(models.Model):
     codename = models.CharField(max_length=100)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'auth_permission'
         unique_together = (('content_type', 'codename'),)
 
@@ -53,7 +53,7 @@ class AuthUser(models.Model):
     date_joined = models.DateTimeField()
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'auth_user'
 
 
@@ -63,7 +63,7 @@ class AuthUserGroups(models.Model):
     group = models.ForeignKey(AuthGroup, models.DO_NOTHING)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'auth_user_groups'
         unique_together = (('user', 'group'),)
 
@@ -74,7 +74,7 @@ class AuthUserUserPermissions(models.Model):
     permission = models.ForeignKey(AuthPermission, models.DO_NOTHING)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'auth_user_user_permissions'
         unique_together = (('user', 'permission'),)
 
@@ -85,7 +85,7 @@ class BarangayTable(models.Model):
     cityid = models.ForeignKey('CityMunicipalityTable', models.DO_NOTHING, db_column='cityID', blank=True, null=True)  # Field name made lowercase.
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'barangay_table'
 
 
@@ -95,7 +95,7 @@ class CityMunicipalityTable(models.Model):
     provinceid = models.ForeignKey('ProvinceTable', models.DO_NOTHING, db_column='provinceID', blank=True, null=True)  # Field name made lowercase.
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'city_municipality_table'
 
 
@@ -104,7 +104,7 @@ class ColorTable(models.Model):
     colorname = models.CharField(db_column='colorName', max_length=99)  # Field name made lowercase.
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'color_table'
     
     def __str__(self):
@@ -116,7 +116,7 @@ class CountryTable(models.Model):
     country_name = models.CharField(max_length=999)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'country_table'
 
 
@@ -128,7 +128,7 @@ class CustomerTable(models.Model):
     email = models.CharField(max_length=999)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'customer_table'
 
     def __str__(self):
@@ -143,7 +143,7 @@ class DeliveryTable(models.Model):
     time = models.IntegerField()
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'delivery_table'
 
 
@@ -157,7 +157,7 @@ class DjangoAdminLog(models.Model):
     user = models.ForeignKey(AuthUser, models.DO_NOTHING)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'django_admin_log'
 
 
@@ -166,7 +166,7 @@ class DjangoContentType(models.Model):
     model = models.CharField(max_length=100)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'django_content_type'
         unique_together = (('app_label', 'model'),)
 
@@ -178,7 +178,7 @@ class DjangoMigrations(models.Model):
     applied = models.DateTimeField()
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'django_migrations'
 
 
@@ -188,7 +188,7 @@ class DjangoSession(models.Model):
     expire_date = models.DateTimeField()
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'django_session'
 
 
@@ -197,7 +197,7 @@ class ItemStatusTable(models.Model):
     itemstat = models.CharField(db_column='itemStat', max_length=99)  # Field name made lowercase.
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'item status table'
     
     def __str__(self):
@@ -212,7 +212,7 @@ class MonthyreportTable(models.Model):
     revenue = models.IntegerField()
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'monthyreport_table'
 
 
@@ -225,7 +225,7 @@ class OrderTable(models.Model):
     quantity = models.IntegerField()
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'order_table'
 
 
@@ -238,7 +238,7 @@ class PaymentTable(models.Model):
     time = models.TimeField(db_column='Time')  # Field name made lowercase.
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'payment_table'
 
 
@@ -247,7 +247,7 @@ class PaystatTable(models.Model):
     status = models.CharField(max_length=99)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'paystat_table'
 
     def __str__(self):
@@ -261,7 +261,7 @@ class PendingOrder(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'pending_order_table'
 
     def is_expired(self):
@@ -273,7 +273,7 @@ class PriceTable(models.Model):
     amount = models.IntegerField()
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'price_table'
 
     def __str__(self):
@@ -285,7 +285,7 @@ class ProdNameTable(models.Model):
     name = models.CharField(max_length=999, blank=True, null=True)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'prod_name_table'
 
     def __str__(self):
@@ -300,7 +300,7 @@ class ProductTable(models.Model):
     productimage = models.CharField(db_column='productImage', max_length=999)  # Field name made lowercase.
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'product_table'
         
     def __str__(self):
@@ -313,7 +313,7 @@ class ProvinceTable(models.Model):
     regionid = models.ForeignKey('RegionTable', models.DO_NOTHING, db_column='regionID', blank=True, null=True)  # Field name made lowercase.
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'province_table'
 
 
@@ -322,7 +322,7 @@ class RegionTable(models.Model):
     region_name = models.CharField(max_length=255)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'region_table'
 
 
@@ -336,7 +336,7 @@ class SalesAddressTable(models.Model):
     createdat = models.DateTimeField(db_column='createdAt')  # Field name made lowercase.
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'sales_address_table'
 
 
@@ -350,7 +350,7 @@ class SalesTable(models.Model):
     sales_time = models.TimeField(blank=True, null=True)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'sales_table'
 
 
@@ -359,7 +359,7 @@ class SizeTable(models.Model):
     size = models.CharField(max_length=45)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'size_table'
 
 
@@ -368,5 +368,5 @@ class StatusTable(models.Model):
     status = models.CharField(max_length=45)
 
     class Meta:
-        # managed = False
+        managed = False
         db_table = 'status_table'
